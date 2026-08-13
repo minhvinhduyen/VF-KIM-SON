@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/jpeg" href="https://inviva.vn/wp-content/uploads/2026/04/logo-vinfast-vector-01.jpg" />
+    
+    <!-- PWA & Mobile Home Screen Shortcut Support -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#005A9E" />
+    
+    <!-- iOS Apple Touch Icon & Fullscreen Mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bảng Tiến Độ" />
+    <link rel="apple-touch-icon" href="https://inviva.vn/wp-content/uploads/2026/04/logo-vinfast-vector-01.jpg" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng Tiến Độ Xưởng Dịch Vụ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-blue': '#005A9E',
+              'brand-gold': '#FDB913',
+              'status-inprogress': '#3b82f6', // blue-500
+              'status-completed': '#22c55e', // green-500
+              'status-washing': '#0ea5e9', // sky-500
+              'status-ready': '#84cc16', // lime-500
+              'status-appointment': '#ef4444', // red-500
+              'status-ticket-opened': '#8b5cf6', // violet-500
+              'status-paused': '#f97316', // orange-500
+            },
+          }
+        }
+      }
+    </script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
+        "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0"
+      }
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

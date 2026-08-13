@@ -1,0 +1,55 @@
+{
+  "super_admins": [
+    {
+      "username": "superadmin",
+      "password": "YOUR_SUPER_ADMIN_PASSWORD_HERE",
+      "name": "Quản Lý Dịch Vụ Chuỗi Vinfast Kim Sơn",
+      "role": "SuperAdmin",
+      "managedFacilities": ["facility_1", "facility_2", "facility_3", "facility_4"]
+    }
+  ],
+  "facility_1": {
+    "name": "Vinfast Kim Sơn Long Bình",
+    "type": "mysql",
+    "mysql": {
+      "host": "103.75.187.26",
+      "user": "sphehuqehosting_User1",
+      "password": "YOUR_DATABASE_PASSWORD_HERE",
+      "database": "sphehuqehosting_Kimson-LongBinh",
+      "port": 3306
+    }
+  },
+  "facility_2": {
+    "name": "Vinfast Kim Sơn Tân Hiệp",
+    "type": "mysql",
+    "mysql": {
+      "host": "103.75.187.26",
+      "user": "sphehuqehosting_User1",
+      "password": "YOUR_DATABASE_PASSWORD_HERE",
+      "database": "YOUR_DATABASE_NAME_HERE",
+      "port": 3306
+    }
+  },
+  "facility_3": {
+    "name": "Vinfast Kim Sơn Long Thành",
+    "type": "mysql",
+    "mysql": {
+      "host": "103.75.187.26",
+      "user": "sphehuqehosting_User1",
+      "password": "YOUR_DATABASE_PASSWORD_HERE",
+      "database": "YOUR_DATABASE_NAME_HERE",
+      "port": 3306
+    }
+  },
+  "facility_4": {
+    "name": "Vinfast Kim Sơn Long Khánh",
+    "type": "mysql",
+    "mysql": {
+      "host": "103.75.187.26",
+      "user": "sphehuqehosting_User1",
+      "password": "YOUR_DATABASE_PASSWORD_HERE",
+      "database": "YOUR_DATABASE_NAME_HERE",
+      "port": 3306
+    }
+  }
+}

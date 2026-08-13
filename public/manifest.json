@@ -1,0 +1,24 @@
+{
+  "name": "Bảng Tiến Độ Xưởng Dịch Vụ",
+  "short_name": "Bảng Tiến Độ",
+  "description": "Bảng theo dõi tiến độ sửa chữa xưởng dịch vụ Vinfast Kim Sơn",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#005A9E",
+  "icons": [
+    {
+      "src": "https://inviva.vn/wp-content/uploads/2026/04/logo-vinfast-vector-01.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "https://inviva.vn/wp-content/uploads/2026/04/logo-vinfast-vector-01.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
