@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: vf-kim-son-api
+    runtime: node
+    buildCommand: npm install && npm run build:server
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"

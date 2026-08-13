@@ -20,25 +20,52 @@ let configs: any = {};
 const mysqlPools: { [key: string]: mysql.Pool } = {};
 const CONFIG_PATH = path.join(process.cwd(), 'config', 'databases.json');
 
-// Tải cấu hình từ config/databases.json
+// Tải cấu hình từ config/databases.json hoặc ENV (cho cloud deployment)
 const loadConfigs = () => {
     try {
         if (fs.existsSync(CONFIG_PATH)) {
             const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
             configs = JSON.parse(data);
-        } else {
-            console.warn("Chưa tìm thấy file config/databases.json, sử dụng cấu hình mặc định (JSON).");
+        } else if (process.env.DB_HOST) {
+            // Fallback: Đọc từ environment variables (Render, Netlify, etc.)
+            console.log("[ServerDb] Không tìm thấy databases.json, sử dụng ENV variables.");
+            const dbHost = process.env.DB_HOST;
+            const dbUser = process.env.DB_USER || 'root';
+            const dbPassword = process.env.DB_PASSWORD || '';
+            const dbPort = parseInt(process.env.DB_PORT || '3306');
+
             configs = {
-                "facility_1": {
-                    "name": "Cơ sở 1",
-                    "type": "json",
-                    "filePath": "./db/facility_1.json"
+                super_admins: JSON.parse(process.env.SUPER_ADMINS || JSON.stringify([
+                    {
+                        username: "superadmin",
+                        password: process.env.SUPER_ADMIN_PASSWORD || "admin",
+                        name: "Quản Lý Dịch Vụ Chuỗi Vinfast Kim Sơn",
+                        role: "SuperAdmin",
+                        managedFacilities: ["facility_1", "facility_2", "facility_3", "facility_4"]
+                    }
+                ])),
+                facility_1: {
+                    name: "Vinfast Kim Sơn Long Bình", type: "mysql",
+                    mysql: { host: dbHost, user: dbUser, password: dbPassword, database: process.env.DB_NAME_F1 || 'sphehuqehosting_Kimson-LongBinh', port: dbPort }
                 },
-                "facility_2": {
-                    "name": "Cơ sở 2",
-                    "type": "json",
-                    "filePath": "./db/facility_2.json"
+                facility_2: {
+                    name: "Vinfast Kim Sơn Tân Hiệp", type: "mysql",
+                    mysql: { host: dbHost, user: dbUser, password: dbPassword, database: process.env.DB_NAME_F2 || 'sphehuqehosting_Kimson-TanHiep', port: dbPort }
+                },
+                facility_3: {
+                    name: "Vinfast Kim Sơn Long Thành", type: "mysql",
+                    mysql: { host: dbHost, user: dbUser, password: dbPassword, database: process.env.DB_NAME_F3 || 'sphehuqehosting_Kimson-LongThanh', port: dbPort }
+                },
+                facility_4: {
+                    name: "Vinfast Kim Sơn Long Khánh", type: "mysql",
+                    mysql: { host: dbHost, user: dbUser, password: dbPassword, database: process.env.DB_NAME_F4 || 'sphehuqehosting_Kimson-LongKhanh', port: dbPort }
                 }
+            };
+        } else {
+            console.warn("Chưa tìm thấy file config/databases.json và không có ENV, sử dụng cấu hình mặc định (JSON).");
+            configs = {
+                "facility_1": { "name": "Cơ sở 1", "type": "json", "filePath": "./db/facility_1.json" },
+                "facility_2": { "name": "Cơ sở 2", "type": "json", "filePath": "./db/facility_2.json" }
             };
         }
     } catch (e) {
