@@ -107,7 +107,7 @@ const ServiceAdvisorDashboard: React.FC = () => {
   const TabButton: React.FC<{tabName: string; label: string}> = ({ tabName, label }) => (
     <button
         onClick={() => setActiveTab(tabName)}
-        className={`px-4 py-2 font-medium rounded-t-lg transition-colors duration-200 focus:outline-none flex-shrink-0 ${
+        className={`px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 focus:outline-none ${
             activeTab === tabName
             ? 'bg-white text-brand-blue border-gray-300 border-l border-t border-r -mb-px'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -235,7 +235,7 @@ const ServiceAdvisorDashboard: React.FC = () => {
         </div>
        
        <div>
-         <div className="flex border-b border-gray-300 overflow-x-auto flex-nowrap scrollbar-none">
+         <div className="grid grid-cols-3 sm:flex gap-1 sm:gap-0 sm:border-b border-gray-300 sm:flex-nowrap mb-2 sm:mb-0">
             <TabButton tabName="general_repair" label="Sửa chữa chung" />
             <TabButton tabName="vehicle_arrival" label="Xe tới xưởng" />
             <TabButton tabName="body_shop" label="Đồng sơn" />

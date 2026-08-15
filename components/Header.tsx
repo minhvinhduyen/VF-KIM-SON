@@ -30,6 +30,13 @@ const Header: React.FC = () => {
     <header className="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
       <div className="flex items-center space-x-3">
         <img src={state.logoUrl} alt="Logo" className="h-10 w-auto max-w-[150px] object-contain" />
+        <span className="text-sm font-bold text-brand-blue sm:hidden truncate max-w-[200px]">
+          {user 
+            ? (user.role === Role.SuperAdmin || (user as any).role === 'SuperAdmin'
+              ? 'Bảng Tiến Độ VF Kim Sơn'
+              : `Bảng Tiến Độ${facilityShortName ? ` ${facilityShortName}` : ''}`)
+            : 'Bảng Tiến Độ'}
+        </span>
         <span className="text-xl font-bold text-brand-blue hidden sm:inline-block">
          {user 
             ? (user.role === Role.SuperAdmin || (user as any).role === 'SuperAdmin'

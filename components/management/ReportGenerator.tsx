@@ -41,7 +41,7 @@ const REPORT_LIST = [
 const ReportGenerator: React.FC = () => {
     const { state } = useApp();
     const { user } = useAuth();
-    const isManager = user?.role === Role.Manager;
+    const isManager = user?.role === Role.Manager || user?.role === Role.SuperAdmin;
     const isCSKH = user?.role === Role.CustomerCare;
     
     const [reportType, setReportType] = useState('');

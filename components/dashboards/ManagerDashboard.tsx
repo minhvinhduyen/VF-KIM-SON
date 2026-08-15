@@ -32,41 +32,40 @@ const TabGroup: React.FC<{
     const isGroupActive = !!activeInGroup;
 
     return (
-        <div className="relative flex-shrink-0" 
-             onMouseEnter={() => setOpen(true)} 
-             onMouseLeave={() => setOpen(false)}>
-            {/* Group header button */}
+        <div className="w-full sm:w-auto">
+            {/* Mobile: Collapsible group header */}
             <button
                 onClick={() => setOpen(prev => !prev)}
-                className={`px-4 py-2.5 font-medium rounded-t-lg transition-all duration-200 focus:outline-none flex items-center gap-1.5 text-sm ${
+                className={`w-full sm:w-auto px-3 py-2 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-all duration-200 focus:outline-none flex items-center justify-between sm:justify-start gap-1.5 text-sm ${
                     isGroupActive
-                    ? 'bg-white text-brand-blue border-gray-300 border-l border-t border-r -mb-px font-semibold'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-blue-50 sm:bg-white text-brand-blue border border-blue-200 sm:border-gray-300 sm:border-b-0 sm:-mb-px font-semibold'
+                    : 'bg-gray-50 sm:bg-gray-100 text-gray-600 hover:bg-gray-100 sm:hover:bg-gray-200 border border-gray-200 sm:border-transparent'
                 }`}
             >
-                <span>{label}</span>
-                {activeInGroup && (
-                    <span className="text-xs bg-blue-100 text-brand-blue px-1.5 py-0.5 rounded-full ml-1">
-                        {activeInGroup.label}
-                    </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                    <span>{label}</span>
+                    {activeInGroup && (
+                        <span className="text-xs bg-blue-100 text-brand-blue px-1.5 py-0.5 rounded-full">
+                            {activeInGroup.label}
+                        </span>
+                    )}
+                </div>
                 <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
 
-            {/* Dropdown menu */}
+            {/* Sub-tabs */}
             {open && (
-                <div className="absolute top-full left-0 z-50 bg-white rounded-b-lg rounded-r-lg shadow-lg border border-gray-200 min-w-[180px] py-1 animate-fade-in">
+                <div className="grid grid-cols-2 sm:flex sm:flex-row gap-1 p-1 sm:p-0 sm:absolute sm:top-full sm:left-0 sm:z-50 bg-white sm:rounded-b-lg sm:rounded-r-lg sm:shadow-lg sm:border sm:border-gray-200 sm:min-w-[180px] sm:py-1 animate-fade-in rounded-lg border border-gray-200 sm:grid-cols-none mt-1 sm:mt-0">
                     {tabs.map(tab => (
                         <button
                             key={tab.name}
                             onClick={() => { setActiveTab(tab.name); setOpen(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 flex items-center gap-2 ${
+                            className={`text-left px-3 py-2 text-xs sm:text-sm rounded-md sm:rounded-none transition-colors duration-150 ${
                                 activeTab === tab.name
                                 ? 'bg-blue-50 text-brand-blue font-semibold'
                                 : 'text-gray-700 hover:bg-gray-50'
                             }`}
                         >
-                            {activeTab === tab.name && <span className="w-1.5 h-1.5 bg-brand-blue rounded-full"></span>}
                             {tab.label}
                         </button>
                     ))}
@@ -285,7 +284,7 @@ const ManagerDashboard: React.FC = () => {
             )}
              <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Chào mừng Manager!</h1>
             <div>
-                <div className="flex border-b border-gray-300 flex-nowrap items-end gap-1 overflow-x-auto scrollbar-none">
+                <div className="flex flex-col sm:flex-row sm:border-b border-gray-300 sm:flex-nowrap sm:items-end gap-1.5 sm:gap-1 mb-2 sm:mb-0">
                     {/* Nhóm 1: Tiến độ */}
                     <TabGroup label="📊 Tiến độ" activeTab={activeTab} setActiveTab={setActiveTab} tabs={[
                         { name: 'overview', label: 'Tổng quan' },
