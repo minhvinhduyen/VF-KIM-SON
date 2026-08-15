@@ -8,7 +8,7 @@ interface ConfirmationModalProps {
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ message, onConfirm, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
       <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm text-center">
         <h3 className="text-lg font-medium mb-4">Xác nhận</h3>
         <p className="mb-6">{message}</p>

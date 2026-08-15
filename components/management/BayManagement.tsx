@@ -70,7 +70,7 @@ const BayManagement: React.FC = () => {
           + Thêm khoang
         </button>
       </div>
-       <div className="bg-white shadow rounded-lg overflow-hidden">
+       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <table className="min-w-full leading-normal">
           <thead>
             <tr>

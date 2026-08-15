@@ -48,8 +48,8 @@ const BayFormModal: React.FC<BayFormModalProps> = ({ bay, onSave, onClose }) => 
   };
 
   return (
-     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center">
-      <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md">
+     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+      <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">{bay ? 'Sửa thông tin khoang' : 'Thêm khoang mới'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

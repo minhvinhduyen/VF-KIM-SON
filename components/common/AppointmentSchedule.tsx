@@ -156,6 +156,7 @@ const AppointmentSchedule: React.FC<AppointmentScheduleProps> = ({ jobs, onJobCl
                                         <tr 
                                             key={appointment.id} 
                                             className={`hover:bg-gray-50 transition-colors ${onJobClick ? 'cursor-pointer' : ''}`}
+                                            onClick={() => onJobClick && onJobClick(appointment)}
                                             onDoubleClick={() => onJobClick && onJobClick(appointment)}
                                         >
                                             <td className="py-3 px-4 text-sm">{index + 1}</td>

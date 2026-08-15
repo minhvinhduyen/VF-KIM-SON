@@ -297,7 +297,7 @@ const GeneralManagerDashboard: React.FC = () => {
         />
       )}
        <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Xin chào Quản Đốc, {user?.name}!</h1>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Xin chào Quản Đốc, {user?.name}!</h1>
        </div>
        
        <div>

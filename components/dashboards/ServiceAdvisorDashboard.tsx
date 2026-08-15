@@ -210,29 +210,29 @@ const ServiceAdvisorDashboard: React.FC = () => {
        {isGatePassModalOpen && (
          <GatePassModal onClose={() => setIsGatePassModalOpen(false)} />
        )}
-       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Xin chào, {user?.name}!</h1>
-        <div className="flex space-x-2">
-            <button 
-              onClick={handleAddNewAppointment}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
-            >
-              + Thêm lịch hẹn
-            </button>
-            <button 
-              onClick={handleOpenGatePass}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
-            >
-              📄 Giấy ra cổng
-            </button>
-            <button 
-              onClick={handleAddNewJob}
-              className="bg-brand-blue hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
-            >
-              + Thêm việc mới
-            </button>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+         <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Xin chào, {user?.name}!</h1>
+         <div className="flex flex-wrap gap-2">
+             <button 
+               onClick={handleAddNewAppointment}
+               className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+             >
+               + Thêm lịch hẹn
+             </button>
+             <button 
+               onClick={handleOpenGatePass}
+               className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+             >
+               📄 Giấy ra cổng
+             </button>
+             <button 
+               onClick={handleAddNewJob}
+               className="bg-brand-blue hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105"
+             >
+               + Thêm việc mới
+             </button>
+         </div>
         </div>
-       </div>
        
        <div>
          <div className="flex border-b border-gray-300 overflow-x-auto flex-nowrap scrollbar-none">

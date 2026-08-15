@@ -237,7 +237,7 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">HỆ THỐNG BÁO CÁO TOÀN CHUỖI</h1>
+          <h1 className="text-xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">HỆ THỐNG BÁO CÁO TOÀN CHUỖI</h1>
           <p className="text-gray-500 mt-1">Xin chào, <span className="font-bold text-brand-blue">{user?.name}</span> (Quản lý chung)</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center flex-wrap gap-3">
@@ -362,7 +362,7 @@ const SuperAdminDashboard: React.FC = () => {
             const color = colors[idx % colors.length];
             return (
               <div key={b.facilityId} className="flex items-center gap-4">
-                <div className="w-[160px] flex-shrink-0 text-sm font-bold text-gray-700 truncate" title={b.facilityName}>
+                <div className="w-28 sm:w-[160px] flex-shrink-0 text-sm font-bold text-gray-700 truncate" title={b.facilityName}>
                   {b.facilityName.replace('Vinfast Kim Sơn ', '')}
                 </div>
                 <div className="flex-1 bg-gray-100 rounded-full h-8 overflow-hidden relative">

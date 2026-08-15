@@ -1,0 +1,11 @@
+{
+  "name": "vf-kim-son-api",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^5.2.1",
+    "cors": "^2.8.6",
+    "mysql2": "^3.23.2",
+    "@google/genai": "^1.27.0"
+  }
+}

@@ -37,7 +37,7 @@ const TabGroup: React.FC<{
              onMouseLeave={() => setOpen(false)}>
             {/* Group header button */}
             <button
-                onClick={() => setOpen(!open)}
+                onClick={() => setOpen(prev => !prev)}
                 className={`px-4 py-2.5 font-medium rounded-t-lg transition-all duration-200 focus:outline-none flex items-center gap-1.5 text-sm ${
                     isGroupActive
                     ? 'bg-white text-brand-blue border-gray-300 border-l border-t border-r -mb-px font-semibold'
@@ -283,9 +283,9 @@ const ManagerDashboard: React.FC = () => {
                     onDelete={handleDeleteRequest}
                 />
             )}
-             <h1 className="text-3xl font-bold text-gray-800">Chào mừng Manager!</h1>
+             <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Chào mừng Manager!</h1>
             <div>
-                <div className="flex border-b border-gray-300 flex-nowrap items-end gap-1">
+                <div className="flex border-b border-gray-300 flex-nowrap items-end gap-1 overflow-x-auto scrollbar-none">
                     {/* Nhóm 1: Tiến độ */}
                     <TabGroup label="📊 Tiến độ" activeTab={activeTab} setActiveTab={setActiveTab} tabs={[
                         { name: 'overview', label: 'Tổng quan' },

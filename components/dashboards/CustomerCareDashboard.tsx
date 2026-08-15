@@ -173,9 +173,9 @@ const CustomerCareDashboard: React.FC = () => {
          <UIOImportModal onClose={() => setIsUIOModalOpen(false)} />
        )}
 
-       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Xin chào, {user?.name}!</h1>
-        <div className="flex space-x-3">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Xin chào, {user?.name}!</h1>
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => setIsUIOModalOpen(true)}
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center"

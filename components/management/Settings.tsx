@@ -53,7 +53,7 @@ const Settings: React.FC = () => {
             <br/>Khuyến nghị: Ảnh PNG nền trong suốt, dung lượng nhỏ (khoảng 20-50KB).
         </p>
 
-        <div className="flex items-start space-x-8">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
             <div className="flex flex-col items-center">
                 <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden mb-2 relative">
                     <img src={state.logoUrl} alt="Current Logo" className="max-w-full max-h-full object-contain" />

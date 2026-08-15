@@ -39,7 +39,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, onClose, onEdit, o
                 />
             )}
             <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex justify-center items-center p-4">
-                <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg">
+                <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4 border-b pb-2">
                         <h2 className="text-2xl font-bold text-gray-800">Chi tiết: {job.licensePlate}</h2>
                         <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl font-light">&times;</button>

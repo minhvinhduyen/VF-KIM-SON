@@ -8,7 +8,7 @@ interface BodyShopCalendarProps {
   onJobClick?: (job: Job) => void;
 }
 
-const BscJobBlock: React.FC<{ job: Job; style: React.CSSProperties; colorClass: string; onDoubleClick: (job: Job) => void; }> = ({ job, style, colorClass, onDoubleClick }) => {
+const BscJobBlock: React.FC<{ job: Job; style: React.CSSProperties; colorClass: string; onDoubleClick?: (job: Job) => void; onClick?: (job: Job) => void; }> = ({ job, style, colorClass, onDoubleClick, onClick }) => {
     const [isHovering, setIsHovering] = useState(false);
 
     const formatTime = (date?: Date) => date ? new Date(date).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'N/A';
@@ -20,7 +20,11 @@ const BscJobBlock: React.FC<{ job: Job; style: React.CSSProperties; colorClass: 
         <div
             style={style}
             className={`absolute h-10 p-1 text-white text-xs font-semibold rounded shadow-md cursor-pointer flex items-center overflow-hidden ${colorClass}`}
-            onDoubleClick={() => onDoubleClick(job)}
+            onClick={() => {
+                if (onClick) onClick(job);
+                else if (onDoubleClick) onDoubleClick(job);
+            }}
+            onDoubleClick={() => onDoubleClick && onDoubleClick(job)}
             title={`${job.licensePlate} - ${job.customerName}`}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
@@ -302,6 +306,7 @@ const BodyShopCalendar: React.FC<BodyShopCalendarProps> = ({ jobs, onJobClick = 
                 width: `calc(${widthInRem}rem - 2px)`,
               }}
               colorClass={getJobColor(job)}
+              onClick={onJobClick}
               onDoubleClick={onJobClick}
             />
           );
