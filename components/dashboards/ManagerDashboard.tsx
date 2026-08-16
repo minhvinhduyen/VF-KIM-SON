@@ -26,16 +26,16 @@ const TabGroup: React.FC<{
     tabs: { name: string; label: string }[];
     activeTab: string;
     setActiveTab: (name: string) => void;
-}> = ({ label, tabs, activeTab, setActiveTab }) => {
-    const [open, setOpen] = useState(false);
+    isOpen: boolean;
+    onToggle: () => void;
+}> = ({ label, tabs, activeTab, setActiveTab, isOpen, onToggle }) => {
     const activeInGroup = tabs.find(t => t.name === activeTab);
     const isGroupActive = !!activeInGroup;
 
     return (
-        <div className="w-full sm:w-auto">
-            {/* Mobile: Collapsible group header */}
+        <div className="sm:relative">
             <button
-                onClick={() => setOpen(prev => !prev)}
+                onClick={onToggle}
                 className={`w-full sm:w-auto px-3 py-2 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-all duration-200 focus:outline-none flex items-center justify-between sm:justify-start gap-1.5 text-sm ${
                     isGroupActive
                     ? 'bg-blue-50 sm:bg-white text-brand-blue border border-blue-200 sm:border-gray-300 sm:border-b-0 sm:-mb-px font-semibold'
@@ -50,17 +50,37 @@ const TabGroup: React.FC<{
                         </span>
                     )}
                 </div>
-                <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <svg className={`w-3 h-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
 
-            {/* Sub-tabs */}
-            {open && (
-                <div className="grid grid-cols-2 sm:flex sm:flex-row gap-1 p-1 sm:p-0 sm:absolute sm:top-full sm:left-0 sm:z-50 bg-white sm:rounded-b-lg sm:rounded-r-lg sm:shadow-lg sm:border sm:border-gray-200 sm:min-w-[180px] sm:py-1 animate-fade-in rounded-lg border border-gray-200 sm:grid-cols-none mt-1 sm:mt-0">
+            {/* Dropdown - desktop only */}
+            <div className={`hidden sm:block absolute top-full left-0 z-50 transition-all duration-200 origin-top ${isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}`}>
+                <div className="bg-white rounded-b-lg rounded-r-lg shadow-lg border border-gray-200 min-w-[200px] py-1">
                     {tabs.map(tab => (
                         <button
                             key={tab.name}
-                            onClick={() => { setActiveTab(tab.name); setOpen(false); }}
-                            className={`text-left px-3 py-2 text-xs sm:text-sm rounded-md sm:rounded-none transition-colors duration-150 ${
+                            onClick={() => { setActiveTab(tab.name); onToggle(); }}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 flex items-center gap-2 ${
+                                activeTab === tab.name
+                                ? 'bg-blue-50 text-brand-blue font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            {activeTab === tab.name && <span className="w-1.5 h-1.5 bg-brand-blue rounded-full flex-shrink-0"></span>}
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Sub-tabs - mobile only */}
+            <div className={`sm:hidden overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-60 opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                <div className="grid grid-cols-2 gap-1 p-1 bg-white rounded-lg border border-gray-200">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.name}
+                            onClick={() => { setActiveTab(tab.name); onToggle(); }}
+                            className={`text-left px-3 py-2 text-xs rounded-md transition-colors duration-150 ${
                                 activeTab === tab.name
                                 ? 'bg-blue-50 text-brand-blue font-semibold'
                                 : 'text-gray-700 hover:bg-gray-50'
@@ -70,7 +90,7 @@ const TabGroup: React.FC<{
                         </button>
                     ))}
                 </div>
-            )}
+            </div>
         </div>
     );
 };
@@ -80,6 +100,7 @@ const ManagerDashboard: React.FC = () => {
     const { state, dispatch, deleteJob } = useApp();
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
+    const [openGroup, setOpenGroup] = useState<string | null>(null);
 
     const [isJobFormOpen, setIsJobFormOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -91,6 +112,10 @@ const ManagerDashboard: React.FC = () => {
 
     const handleToggleFullScreen = () => {
         dispatch({ type: 'SET_TIMELINE_FULLSCREEN', payload: !isFullScreen });
+    };
+
+    const toggleGroup = (groupName: string) => {
+        setOpenGroup(prev => prev === groupName ? null : groupName);
     };
 
     const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash);
@@ -286,14 +311,14 @@ const ManagerDashboard: React.FC = () => {
             <div>
                 <div className="flex flex-col sm:flex-row sm:border-b border-gray-300 sm:flex-nowrap sm:items-end gap-1.5 sm:gap-1 mb-2 sm:mb-0">
                     {/* Nhóm 1: Tiến độ */}
-                    <TabGroup label="📊 Tiến độ" activeTab={activeTab} setActiveTab={setActiveTab} tabs={[
+                    <TabGroup label="📊 Tiến độ" activeTab={activeTab} setActiveTab={setActiveTab} isOpen={openGroup === 'progress'} onToggle={() => toggleGroup('progress')} tabs={[
                         { name: 'overview', label: 'Tổng quan' },
                         { name: 'general_repair', label: 'Sửa chữa chung' },
                         { name: 'body_shop', label: 'Đồng sơn' },
                     ]} />
 
                     {/* Nhóm 2: Quản lý xe */}
-                    <TabGroup label="🚗 Quản lý xe" activeTab={activeTab} setActiveTab={setActiveTab} tabs={[
+                    <TabGroup label="🚗 Quản lý xe" activeTab={activeTab} setActiveTab={setActiveTab} isOpen={openGroup === 'vehicles'} onToggle={() => toggleGroup('vehicles')} tabs={[
                         { name: 'vehicle_arrival', label: 'Xe tới xưởng' },
                         { name: 'appointments', label: 'Lịch hẹn' },
                         { name: 'paused_jobs', label: 'Xe dừng CV' },
@@ -301,7 +326,7 @@ const ManagerDashboard: React.FC = () => {
                     ]} />
 
                     {/* Nhóm 3: Hệ thống */}
-                    <TabGroup label="⚙️ Hệ thống" activeTab={activeTab} setActiveTab={setActiveTab} tabs={[
+                    <TabGroup label="⚙️ Hệ thống" activeTab={activeTab} setActiveTab={setActiveTab} isOpen={openGroup === 'system'} onToggle={() => toggleGroup('system')} tabs={[
                         { name: 'user_management', label: 'Quản lý nhân viên' },
                         { name: 'bay_management', label: 'Quản lý khoang' },
                         { name: 'reports', label: 'Báo cáo' },
