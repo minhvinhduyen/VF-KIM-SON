@@ -122,6 +122,16 @@ const findUserByUsername = async (username) => {
     return null;
 };
 
+const findUserInFacility = async (username, facilityId) => {
+    loadConfigs();
+    try {
+        const users = await dbGetAll(facilityId, 'users');
+        const match = users.find(u => String(u.id) === username);
+        if (match) return { facilityId, user: match };
+    } catch(e) { console.error(`Error finding user ${username} in ${facilityId}:`, e); }
+    return null;
+};
+
 const getFacilitiesList = () => {
     loadConfigs();
     return Object.keys(configs).filter(k => k.startsWith('facility_')).map(k => ({ id: k, name: configs[k].name }));
@@ -129,7 +139,7 @@ const getFacilitiesList = () => {
 
 // === MIDDLEWARE ===
 app.use((req, res, next) => {
-    req.facilityId = String(req.headers['x-facility-id'] || 'facility_1');
+    req.facilityId = String(req.headers['x-facility-id'] || '');
     next();
 });
 
@@ -221,15 +231,21 @@ app.post('/vf-api/api/vehicles/import', async (req, res) => {
     } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-// Login
 app.post('/vf-api/api/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, facilityId: requestedFacilityId } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Vui lòng nhập đầy đủ." });
         const strUser = String(username).trim(), strPass = String(password);
         const sa = getSuperAdmin(strUser);
         if (sa && String(sa.password) === strPass) { const { password: _, ...u } = sa; return res.json({ success: true, user: u }); }
-        const result = await findUserByUsername(strUser);
+        // Ưu tiên tìm trong cơ sở được chọn
+        let result = null;
+        if (requestedFacilityId) {
+            result = await findUserInFacility(strUser, requestedFacilityId);
+        }
+        if (!result) {
+            result = await findUserByUsername(strUser);
+        }
         if (result && String(result.user.password) === strPass) { const { password: _, ...u } = result.user; return res.json({ success: true, user: { ...u, facilityId: result.facilityId } }); }
         return res.status(401).json({ error: "Tài khoản hoặc mật khẩu không chính xác." });
     } catch(e) { res.status(500).json({error:e.message}); }
