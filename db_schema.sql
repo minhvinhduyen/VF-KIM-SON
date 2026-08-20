@@ -12,15 +12,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Thêm tài khoản quản trị mặc định (Mã: admin / Mật khẩu: 123456 hoặc 1)
-INSERT INTO `users` (`id`, `name`, `role`, `password`) VALUES 
-('admin', 'Quản lý hệ thống', 'Quản lý', '1')
-ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
-
-INSERT INTO `users` (`id`, `name`, `role`, `password`) VALUES 
-('admin2', 'Admin Test', 'Quản lý', '123456')
-ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
-
+-- Lưu ý: Tạo tài khoản nhân viên thông qua giao diện Quản lý nhân viên trên web.
+-- KHÔNG insert tài khoản mặc định vào đây để tránh trùng lặp giữa các cơ sở.
 
 -- 2. Bảng lưu trữ Khoang sửa chữa (bays)
 CREATE TABLE IF NOT EXISTS `bays` (

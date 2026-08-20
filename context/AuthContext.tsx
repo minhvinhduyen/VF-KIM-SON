@@ -5,7 +5,7 @@ import { loginUser } from '../services/apiService';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, pass: string) => Promise<boolean>;
+  login: (username: string, pass: string, facilityId?: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -76,6 +76,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     console.log('[AuthContext] Đăng xuất');
     setUser(null);
+    // Xóa facility cũ để tránh stale data khi đăng nhập tài khoản khác
+    localStorage.removeItem('activeFacilityId');
   };
 
   console.log('[AuthContext] Render - user:', user ? user.id : 'null');

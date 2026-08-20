@@ -49,7 +49,7 @@ const initialState: AppState = {
   isLoading: true, // we will change to false or true based on if facility is set
   error: null,
   logoUrl: localStorage.getItem('app_custom_logo') || DEFAULT_LOGO,
-  activeFacilityId: localStorage.getItem('activeFacilityId') || getDefaultFacility().id,
+  activeFacilityId: localStorage.getItem('activeFacilityId') || '',
 };
 
 

@@ -7,7 +7,7 @@ import BodyShopCalendar from './common/BodyShopCalendar';
 import { BayType, JobType, JobStatus } from '../types';
 import TimelineLegend from './common/TimelineLegend';
 import WelcomeScreen from './common/WelcomeScreen';
-import { facilities } from '../services/facilitiesConfig';
+import { facilities, getDefaultFacility } from '../services/facilitiesConfig';
 
 const toYYYYMMDD = (date: Date): string => {
     const year = date.getFullYear();
@@ -20,6 +20,13 @@ const Login: React.FC = () => {
   const [activeTab, setActiveTab] = useState('login');
   const { state, setFacility } = useApp();
   
+  // Nếu chưa có facility (lần đầu vào hoặc đã logout), set mặc định cho tab xem tiến độ public
+  useEffect(() => {
+    if (!state.activeFacilityId) {
+      setFacility(getDefaultFacility().id);
+    }
+  }, []);
+
   // Ref cho container của tab Sửa chữa chung để kích hoạt native fullscreen
   const generalRepairContainerRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);

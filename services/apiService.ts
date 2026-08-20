@@ -1,6 +1,6 @@
 // --- API Service Implementation using Custom Express Backend ---
 
-let activeFacilityId = localStorage.getItem('activeFacilityId') || 'facility_1';
+let activeFacilityId = localStorage.getItem('activeFacilityId') || '';
 
 export const setApiFacilityId = (id: string) => {
     activeFacilityId = id;

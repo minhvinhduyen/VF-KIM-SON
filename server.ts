@@ -21,7 +21,7 @@ async function startServer() {
 
   // Middleware xác định facility (Cơ sở) đang tương tác từ Header
   app.use((req, res, next) => {
-    const facilityId = req.headers['x-facility-id'] || 'facility_1';
+    const facilityId = req.headers['x-facility-id'] || '';
     (req as any).facilityId = String(facilityId);
     next();
   });
