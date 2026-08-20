@@ -8,11 +8,13 @@ const fs = require('fs');
 const mysql = require('mysql2/promise');
 
 const app = express();
-// Middleware xử lý CORS toàn diện & hỗ trợ Preflight cho tất cả các đường dẫn
+// Middleware CORS cực mạnh cho Phusion Passenger / Apache / cPanel
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-facility-id, Authorization');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-facility-id, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -152,10 +154,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// === API ROUTES ===
+// === API ROUTES (Hỗ trợ cả /api/... và /vf-api/api/...) ===
 
 // Scan Plate AI
-app.post('/vf-api/api/scan-plate', async (req, res) => {
+app.post(['/api/scan-plate', '/vf-api/api/scan-plate'], async (req, res) => {
     try {
         const { imageBase64 } = req.body;
         const apiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -175,31 +177,31 @@ app.post('/vf-api/api/scan-plate', async (req, res) => {
 });
 
 // Fast Data
-app.get('/vf-api/api/fast-data', async (req, res) => {
+app.get(['/api/fast-data', '/vf-api/api/fast-data'], async (req, res) => {
     try {
         const [jobs, users, bays] = await Promise.all([dbGetAll(req.facilityId, 'jobs'), dbGetAll(req.facilityId, 'users'), dbGetAll(req.facilityId, 'bays')]);
         res.json({ jobs, users, bays });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/vf-api/api/all-data', async (req, res) => {
+app.get(['/api/all-data', '/vf-api/api/all-data'], async (req, res) => {
     try {
         const [jobs, users, bays, vehicles] = await Promise.all([dbGetAll(req.facilityId, 'jobs'), dbGetAll(req.facilityId, 'users'), dbGetAll(req.facilityId, 'bays'), dbGetAll(req.facilityId, 'vehicles')]);
         res.json({ jobs, users, bays, vehicles });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/vf-api/api/vehicles', async (req, res) => {
+app.get(['/api/vehicles', '/vf-api/api/vehicles'], async (req, res) => {
     try { res.json(await dbGetAll(req.facilityId, 'vehicles')); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Jobs CRUD
-app.post('/vf-api/api/jobs', async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'jobs', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.put('/vf-api/api/jobs', async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'jobs', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.delete('/vf-api/api/jobs/:id', async (req, res) => { try { await dbDelete(req.facilityId, 'jobs', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
+app.post(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'jobs', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.put(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'jobs', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.delete(['/api/jobs/:id', '/vf-api/api/jobs/:id'], async (req, res) => { try { await dbDelete(req.facilityId, 'jobs', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
 
 // Users CRUD
-app.post('/vf-api/api/users', async (req, res) => {
+app.post(['/api/users', '/vf-api/api/users'], async (req, res) => {
     try {
         const newUserId = String(req.body.id).trim();
         if (!newUserId) return res.status(400).json({ error: "Mã nhân viên không được để trống." });
@@ -213,18 +215,18 @@ app.post('/vf-api/api/users', async (req, res) => {
         res.json(await dbInsert(req.facilityId, 'users', req.body));
     } catch(e) { res.status(500).json({error:e.message}); }
 });
-app.put('/vf-api/api/users', async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'users', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.delete('/vf-api/api/users/:id', async (req, res) => { try { await dbDelete(req.facilityId, 'users', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
+app.put(['/api/users', '/vf-api/api/users'], async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'users', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.delete(['/api/users/:id', '/vf-api/api/users/:id'], async (req, res) => { try { await dbDelete(req.facilityId, 'users', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
 
 // Bays CRUD
-app.post('/vf-api/api/bays', async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'bays', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.put('/vf-api/api/bays', async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'bays', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.delete('/vf-api/api/bays/:id', async (req, res) => { try { await dbDelete(req.facilityId, 'bays', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
+app.post(['/api/bays', '/vf-api/api/bays'], async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'bays', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.put(['/api/bays', '/vf-api/api/bays'], async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'bays', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.delete(['/api/bays/:id', '/vf-api/api/bays/:id'], async (req, res) => { try { await dbDelete(req.facilityId, 'bays', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
 
 // Vehicles
-app.post('/vf-api/api/vehicles', async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'vehicles', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.put('/vf-api/api/vehicles', async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'vehicles', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.post('/vf-api/api/vehicles/import', async (req, res) => {
+app.post(['/api/vehicles', '/vf-api/api/vehicles'], async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'vehicles', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.put(['/api/vehicles', '/vf-api/api/vehicles'], async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'vehicles', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.post(['/api/vehicles/import', '/vf-api/api/vehicles/import'], async (req, res) => {
     try {
         const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
         let imported = 0, skipped = 0;
@@ -240,7 +242,7 @@ app.post('/vf-api/api/vehicles/import', async (req, res) => {
     } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.post('/vf-api/api/login', async (req, res) => {
+app.post(['/api/login', '/vf-api/api/login'], async (req, res) => {
     try {
         const { username, password, facilityId: requestedFacilityId } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Vui lòng nhập đầy đủ." });
@@ -261,10 +263,10 @@ app.post('/vf-api/api/login', async (req, res) => {
 });
 
 // Facilities
-app.get('/vf-api/api/facilities', (req, res) => { try { res.json(getFacilitiesList()); } catch(e) { res.status(500).json({error:e.message}); }});
+app.get(['/api/facilities', '/vf-api/api/facilities'], (req, res) => { try { res.json(getFacilitiesList()); } catch(e) { res.status(500).json({error:e.message}); }});
 
 // Super Admin Overview
-app.get('/vf-api/api/super-admin/overview', async (req, res) => {
+app.get(['/api/super-admin/overview', '/vf-api/api/super-admin/overview'], async (req, res) => {
     try {
         const list = getFacilitiesList();
         const branchSummaries = [];
@@ -298,7 +300,7 @@ app.get('/vf-api/api/super-admin/overview', async (req, res) => {
 // Phục vụ frontend static
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
-    app.use('/vf-api', express.static(distPath));
+    app.use(['/', '/vf-api'], express.static(distPath));
 }
 
 // Passenger không cần app.listen() - chỉ cần module.exports
