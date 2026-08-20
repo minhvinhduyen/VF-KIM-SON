@@ -1,18 +1,16 @@
 [build]
-  command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
+  command = "npx vite build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  VITE_API_BASE_URL = ""
 
-# Redirect /api/* to the serverless function
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "https://diennuoct36.com/vf-api/api/:splat"
   status = 200
+  force = true
 
-# SPA fallback: serve index.html for all routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
