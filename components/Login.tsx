@@ -26,6 +26,7 @@ const Login: React.FC = () => {
 
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedFacility, setSelectedFacility] = useState('');
   const [error, setError] = useState('');
   const [forgotPasswordMsg, setForgotPasswordMsg] = useState('');
   const { login } = useAuth();
@@ -42,7 +43,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const success = await login(id, password);
+    const success = await login(id, password, selectedFacility || undefined);
     if (!success) {
       setError('Tài khoản hoặc mật khẩu không chính xác.');
     }
@@ -176,6 +177,22 @@ const Login: React.FC = () => {
                     {state.error && <p className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded relative mb-4 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg> {state.error}</p>}
                     
                     <form onSubmit={handleSubmit}>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="facility">
+                        Cơ sở làm việc
+                        </label>
+                        <select
+                        id="facility"
+                        value={selectedFacility}
+                        onChange={(e) => setSelectedFacility(e.target.value)}
+                        className="shadow-inner appearance-none border rounded w-full py-3 px-4 text-gray-700 font-semibold leading-tight focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50"
+                        >
+                        <option value="">-- Quản lý toàn chuỗi --</option>
+                        {facilities.map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                        </select>
+                    </div>
                     <div className="mb-4">
                         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="employeeId">
                         Mã số nhân viên

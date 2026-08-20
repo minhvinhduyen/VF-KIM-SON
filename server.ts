@@ -286,14 +286,14 @@ async function startServer() {
   // API Đăng nhập tự động định tuyến
   app.post('/api/login', async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const { username, password, facilityId: requestedFacilityId } = req.body;
       if (!username || !password) {
         return res.status(400).json({ error: "Vui lòng nhập đầy đủ tài khoản và mật khẩu." });
       }
 
       const strUsername = String(username).trim();
       const strPassword = String(password);
-      console.log(`[Login attempt] Username: "${strUsername}", Password: "${strPassword}"`);
+      console.log(`[Login attempt] Username: "${strUsername}", Facility: "${requestedFacilityId || 'auto'}"`);
 
       // 1. Kiểm tra tài khoản Super Admin trước
       const superAdmin = db.getSuperAdmin(strUsername);
@@ -306,8 +306,17 @@ async function startServer() {
         });
       }
 
-      // 2. Tìm tài khoản người dùng thường xuyên suốt các cơ sở
-      const searchResult = await db.findUserByUsername(strUsername);
+      // 2. Tìm tài khoản người dùng — ưu tiên theo facility được chọn
+      let searchResult;
+      if (requestedFacilityId) {
+        // Tìm trong cơ sở cụ thể mà user đã chọn
+        searchResult = await db.findUserInFacility(strUsername, requestedFacilityId);
+      }
+      if (!searchResult) {
+        // Fallback: quét toàn bộ cơ sở (cho trường hợp không chọn cơ sở)
+        searchResult = await db.findUserByUsername(strUsername);
+      }
+      
       if (searchResult) {
         const { facilityId, user } = searchResult;
         console.log(`[Login DB Match] Found user in facility "${facilityId}":`, JSON.stringify(user));
@@ -322,10 +331,10 @@ async function startServer() {
             }
           });
         } else {
-          console.log(`[Login fail] Password mismatch for user "${strUsername}". DB password: "${user.password}", Entered: "${strPassword}"`);
+          console.log(`[Login fail] Password mismatch for user "${strUsername}".`);
         }
       } else {
-        console.log(`[Login fail] No user found matching username: "${strUsername}" across all databases`);
+        console.log(`[Login fail] No user found matching username: "${strUsername}"`);
       }
 
       return res.status(401).json({ error: "Tài khoản hoặc mật khẩu không chính xác." });

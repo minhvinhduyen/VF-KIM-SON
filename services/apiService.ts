@@ -169,11 +169,11 @@ export const importVehicles = async (vehicles: any[]) => {
 
 // --- Authentication & Global Admin APIs ---
 
-export const loginUser = async (username: string, pass: string) => {
+export const loginUser = async (username: string, pass: string, facilityId?: string) => {
     const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: pass })
+        body: JSON.stringify({ username, password: pass, facilityId })
     });
     return handleResponse(res);
 };

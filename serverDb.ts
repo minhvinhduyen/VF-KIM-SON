@@ -366,6 +366,20 @@ export const findUserByUsername = async (username: string): Promise<{ facilityId
     return null;
 };
 
+export const findUserInFacility = async (username: string, facilityId: string): Promise<{ facilityId: string, user: any } | null> => {
+    loadConfigs();
+    try {
+        const users = await getAll(facilityId, 'users');
+        const matchedUser = users.find((u: any) => String(u.id) === username);
+        if (matchedUser) {
+            return { facilityId, user: matchedUser };
+        }
+    } catch (e) {
+        console.error(`Lỗi khi tìm user ${username} ở cơ sở ${facilityId}:`, e);
+    }
+    return null;
+};
+
 export const getFacilitiesList = (): any[] => {
     loadConfigs();
     return Object.keys(configs)

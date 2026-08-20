@@ -51,10 +51,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []); // Chỉ chạy 1 lần khi mount
 
-  const login = async (username: string, pass: string): Promise<boolean> => {
+  const login = async (username: string, pass: string, facilityId?: string): Promise<boolean> => {
     try {
         console.log('[AuthContext] Bắt đầu đăng nhập:', username);
-        const response = await loginUser(username, pass);
+        const response = await loginUser(username, pass, facilityId);
         console.log('[AuthContext] Phản hồi từ server:', JSON.stringify(response));
         if (response && response.success && response.user) {
             console.log('[AuthContext] Đặt user state:', response.user.id, response.user.role);

@@ -136,7 +136,13 @@ interface AppProviderProps {
 
 const safeNewDate = (dateString: any): Date | undefined => {
     if (!dateString) return undefined;
-    const date = new Date(dateString);
+    // MySQL trả về dạng "2026-08-20 15:56:00" (dấu cách thay vì T)
+    // Safari/WebKit không parse được format này, cần chuyển sang ISO format
+    let normalized = String(dateString);
+    if (normalized.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/) && !normalized.includes('T')) {
+        normalized = normalized.replace(' ', 'T');
+    }
+    const date = new Date(normalized);
     return isNaN(date.getTime()) ? undefined : date;
 };
 
