@@ -233,6 +233,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // This prevents the "Server is busy" error caused by reading the huge Vehicle sheet repeatedly.
   const refreshData = useCallback(async () => {
     try {
+        // Đảm bảo API service luôn dùng đúng facility ID hiện tại
+        apiService.setApiFacilityId(state.activeFacilityId);
         const data: any = await apiService.fetchFastData();
         dispatch({ 
             type: 'SET_ALL_DATA', 
@@ -248,7 +250,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.error("Manual data refresh failed:", e);
         throw e;
     }
-  }, [dispatch, state.vehicles]); // Dependency on state.vehicles ensures we don't lose them
+  }, [dispatch, state.vehicles, state.activeFacilityId]); // Dependency on state.vehicles ensures we don't lose them
 
   // Logic tự động lưu xe mới hoặc cập nhật thông tin xe
   // MOVED UP: Để addJob và updateJob có thể gọi được
