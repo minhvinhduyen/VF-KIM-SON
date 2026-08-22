@@ -315,14 +315,16 @@ async function startServer() {
         });
       }
 
-      // 2. Tìm tài khoản người dùng — ưu tiên theo facility được chọn
+      // 2. Tìm tài khoản người dùng — CHỈ trong cơ sở được chọn
       let searchResult;
       if (requestedFacilityId) {
-        // Tìm trong cơ sở cụ thể mà user đã chọn
+        // Đã chọn cơ sở -> CHỈ tìm trong cơ sở đó, KHÔNG tìm sang cơ sở khác
         searchResult = await db.findUserInFacility(strUsername, requestedFacilityId);
-      }
-      if (!searchResult) {
-        // Fallback: quét toàn bộ cơ sở (cho trường hợp không chọn cơ sở)
+        if (!searchResult) {
+          return res.status(401).json({ error: `Tài khoản "${strUsername}" không tồn tại trong cơ sở đã chọn.` });
+        }
+      } else {
+        // Không chọn cơ sở (Quản lý toàn chuỗi) -> quét tất cả cơ sở
         searchResult = await db.findUserByUsername(strUsername);
       }
       

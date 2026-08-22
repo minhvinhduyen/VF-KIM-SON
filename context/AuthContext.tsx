@@ -53,15 +53,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, pass: string, facilityId?: string): Promise<boolean> => {
     try {
-        console.log('[AuthContext] Bắt đầu đăng nhập:', username);
+        console.log('[AuthContext] Bắt đầu đăng nhập:', username, 'facilityId:', facilityId);
         const response = await loginUser(username, pass, facilityId);
         console.log('[AuthContext] Phản hồi từ server:', JSON.stringify(response));
         if (response && response.success && response.user) {
-            console.log('[AuthContext] Đặt user state:', response.user.id, response.user.role);
-            setUser(response.user);
-            if (response.user.facilityId) {
-                console.log('[AuthContext] Đặt facility:', response.user.facilityId);
-                setFacility(response.user.facilityId);
+            // Ưu tiên facilityId do người dùng chọn trên form đăng nhập
+            const effectiveFacilityId = facilityId || response.user.facilityId;
+            console.log('[AuthContext] Đặt user state:', response.user.id, 'facility:', effectiveFacilityId);
+            const userWithFacility = { ...response.user, facilityId: effectiveFacilityId };
+            setUser(userWithFacility);
+            if (effectiveFacilityId) {
+                console.log('[AuthContext] Đặt facility:', effectiveFacilityId);
+                setFacility(effectiveFacilityId);
             }
             console.log('[AuthContext] Login thành công, return true');
             return true;
@@ -78,6 +81,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     // Xóa facility cũ để tránh stale data khi đăng nhập tài khoản khác
     localStorage.removeItem('activeFacilityId');
+    // Reset API facility ID để không gửi header cũ
+    import('../services/apiService').then(api => api.setApiFacilityId(''));
+    // Reset facility trong AppContext
+    setFacility('');
   };
 
   console.log('[AuthContext] Render - user:', user ? user.id : 'null');

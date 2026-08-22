@@ -247,17 +247,26 @@ app.post(['/api/login', '/vf-api/api/login'], async (req, res) => {
         const { username, password, facilityId: requestedFacilityId } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Vui lòng nhập đầy đủ." });
         const strUser = String(username).trim(), strPass = String(password);
+        // SuperAdmin - tài khoản quản lý toàn chuỗi
         const sa = getSuperAdmin(strUser);
         if (sa && String(sa.password) === strPass) { const { password: _, ...u } = sa; return res.json({ success: true, user: u }); }
-        // Ưu tiên tìm trong cơ sở được chọn
+        
         let result = null;
         if (requestedFacilityId) {
+            // Đã chọn cơ sở -> CHỈ tìm trong cơ sở đó, KHÔNG tìm sang cơ sở khác
             result = await findUserInFacility(strUser, requestedFacilityId);
-        }
-        if (!result) {
+            if (!result) {
+                return res.status(401).json({ error: `Tài khoản "${strUser}" không tồn tại trong cơ sở đã chọn.` });
+            }
+        } else {
+            // Không chọn cơ sở (Quản lý toàn chuỗi) -> quét tất cả cơ sở
             result = await findUserByUsername(strUser);
         }
-        if (result && String(result.user.password) === strPass) { const { password: _, ...u } = result.user; return res.json({ success: true, user: { ...u, facilityId: result.facilityId } }); }
+        
+        if (result && String(result.user.password) === strPass) {
+            const { password: _, ...u } = result.user;
+            return res.json({ success: true, user: { ...u, facilityId: result.facilityId } });
+        }
         return res.status(401).json({ error: "Tài khoản hoặc mật khẩu không chính xác." });
     } catch(e) { res.status(500).json({error:e.message}); }
 });
