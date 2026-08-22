@@ -246,11 +246,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, [state.activeFacilityId]);
 
   // Optimized refresh: Only fetches lightweight data (Jobs/Bays/Users), reusing existing Vehicles.
-  // This prevents the "Server is busy" error caused by reading the huge Vehicle sheet repeatedly.
   const refreshData = useCallback(async () => {
     try {
-        // Đảm bảo API service luôn dùng đúng facility ID hiện tại
-        apiService.setApiFacilityId(state.activeFacilityId);
+        // Luôn đọc facilityId MỚI NHẤT từ localStorage (tránh stale closure)
+        const currentFacilityId = localStorage.getItem('activeFacilityId') || '';
+        if (!currentFacilityId) return;
+        
+        console.log(`[refreshData] Refreshing with facilityId: ${currentFacilityId}`);
+        apiService.setApiFacilityId(currentFacilityId);
         const data: any = await apiService.fetchFastData();
         dispatch({ 
             type: 'SET_ALL_DATA', 
@@ -258,7 +261,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
                 users: data.users, 
                 bays: data.bays, 
                 jobs: hydrateJobsAfterFetch(data.jobs),
-                // IMPORTANT: Keep existing vehicles, do not overwrite with empty or re-fetch unnecessary heavy data
+                // IMPORTANT: Keep existing vehicles
                 vehicles: state.vehicles, 
             } 
         });
@@ -266,7 +269,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.error("Manual data refresh failed:", e);
         throw e;
     }
-  }, [dispatch, state.vehicles, state.activeFacilityId]); // Dependency on state.vehicles ensures we don't lose them
+  }, [dispatch, state.vehicles]);
 
   // Logic tự động lưu xe mới hoặc cập nhật thông tin xe
   // MOVED UP: Để addJob và updateJob có thể gọi được
