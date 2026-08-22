@@ -4,6 +4,7 @@ let activeFacilityId = localStorage.getItem('activeFacilityId') || '';
 
 export const setApiFacilityId = (id: string) => {
     activeFacilityId = id;
+    console.log('[apiService] setApiFacilityId:', id);
 };
 
 // PWA / Jamstack API URL configuration
@@ -18,8 +19,15 @@ const fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> 
 const getHeaders = () => {
     return {
         'Content-Type': 'application/json',
-        'x-facility-id': activeFacilityId
     };
+};
+
+// Thêm facilityId vào URL dưới dạng query parameter (thay vì header)
+// Lý do: Netlify proxy có thể strip custom header x-facility-id
+const withFacility = (url: string): string => {
+    if (!activeFacilityId) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}facilityId=${encodeURIComponent(activeFacilityId)}`;
 };
 
 const handleResponse = async (res: Response) => {
@@ -32,7 +40,7 @@ const handleResponse = async (res: Response) => {
 
 // Truy vấn lấy toàn bộ dữ liệu (tương thích ngược)
 export const fetchAllData = async () => {
-    const res = await fetch('/api/all-data', {
+    const res = await fetch(withFacility('/api/all-data'), {
         headers: getHeaders()
     });
     return handleResponse(res);
@@ -40,7 +48,8 @@ export const fetchAllData = async () => {
 
 // Truy vấn nhanh (Jobs, Users, Bays)
 export const fetchFastData = async () => {
-    const res = await fetch('/api/fast-data', {
+    console.log('[apiService] fetchFastData with facilityId:', activeFacilityId);
+    const res = await fetch(withFacility('/api/fast-data'), {
         headers: getHeaders()
     });
     return handleResponse(res);
@@ -48,7 +57,7 @@ export const fetchFastData = async () => {
 
 // Truy vấn xe (Vehicles)
 export const fetchVehicles = async () => {
-    const res = await fetch('/api/vehicles', {
+    const res = await fetch(withFacility('/api/vehicles'), {
         headers: getHeaders()
     });
     return handleResponse(res);
@@ -57,7 +66,7 @@ export const fetchVehicles = async () => {
 // --- Job API ---
 
 export const addJob = async (job: any) => {
-    const res = await fetch('/api/jobs', {
+    const res = await fetch(withFacility('/api/jobs'), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(job)
@@ -66,7 +75,7 @@ export const addJob = async (job: any) => {
 };
 
 export const updateJob = async (job: any) => {
-    const res = await fetch('/api/jobs', {
+    const res = await fetch(withFacility('/api/jobs'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(job)
@@ -75,7 +84,7 @@ export const updateJob = async (job: any) => {
 };
 
 export const deleteJob = async (jobId: string) => {
-    const res = await fetch(`/api/jobs/${jobId}`, {
+    const res = await fetch(withFacility(`/api/jobs/${jobId}`), {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -85,7 +94,7 @@ export const deleteJob = async (jobId: string) => {
 // --- User API ---
 
 export const addUser = async (user: any) => {
-    const res = await fetch('/api/users', {
+    const res = await fetch(withFacility('/api/users'), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(user)
@@ -94,7 +103,7 @@ export const addUser = async (user: any) => {
 };
 
 export const updateUser = async (user: any) => {
-    const res = await fetch('/api/users', {
+    const res = await fetch(withFacility('/api/users'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(user)
@@ -103,7 +112,7 @@ export const updateUser = async (user: any) => {
 };
 
 export const deleteUser = async (userId: string) => {
-    const res = await fetch(`/api/users/${userId}`, {
+    const res = await fetch(withFacility(`/api/users/${userId}`), {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -113,7 +122,7 @@ export const deleteUser = async (userId: string) => {
 // --- Bay API ---
 
 export const addBay = async (bay: any) => {
-    const res = await fetch('/api/bays', {
+    const res = await fetch(withFacility('/api/bays'), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(bay)
@@ -122,7 +131,7 @@ export const addBay = async (bay: any) => {
 };
 
 export const updateBay = async (bay: any) => {
-    const res = await fetch('/api/bays', {
+    const res = await fetch(withFacility('/api/bays'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(bay)
@@ -131,7 +140,7 @@ export const updateBay = async (bay: any) => {
 };
 
 export const deleteBay = async (bayId: string) => {
-    const res = await fetch(`/api/bays/${bayId}`, {
+    const res = await fetch(withFacility(`/api/bays/${bayId}`), {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -141,7 +150,7 @@ export const deleteBay = async (bayId: string) => {
 // --- Vehicle API ---
 
 export const addVehicle = async (vehicle: any) => {
-    const res = await fetch('/api/vehicles', {
+    const res = await fetch(withFacility('/api/vehicles'), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(vehicle)
@@ -150,7 +159,7 @@ export const addVehicle = async (vehicle: any) => {
 };
 
 export const updateVehicle = async (vehicle: any) => {
-    const res = await fetch('/api/vehicles', {
+    const res = await fetch(withFacility('/api/vehicles'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(vehicle)
@@ -159,7 +168,7 @@ export const updateVehicle = async (vehicle: any) => {
 };
 
 export const importVehicles = async (vehicles: any[]) => {
-    const res = await fetch('/api/vehicles/import', {
+    const res = await fetch(withFacility('/api/vehicles/import'), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ vehicles })
@@ -183,7 +192,7 @@ export const fetchSuperAdminOverview = async (from?: string, to?: string) => {
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     const qs = params.toString();
-    const res = await fetch(`/api/super-admin/overview${qs ? '?' + qs : ''}`, {
+    const res = await fetch(withFacility(`/api/super-admin/overview${qs ? '?' + qs : ''}`), {
         headers: getHeaders()
     });
     return handleResponse(res);

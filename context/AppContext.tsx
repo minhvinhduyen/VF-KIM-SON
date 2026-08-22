@@ -187,6 +187,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
+    // AbortController: nếu facilityId thay đổi trước khi fetch hoàn thành,
+    // fetch cũ sẽ bị cancel → tránh race condition (data cũ ghi đè data mới)
+    let cancelled = false;
+
     const loadData = async () => {
         if (!state.activeFacilityId) {
             dispatch({ type: 'FETCH_DATA_SUCCESS', payload: { users: [], bays: [], jobs: [], vehicles: [] } });
@@ -201,6 +205,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Set active facility in API service
         apiService.setApiFacilityId(state.activeFacilityId);
+        console.log(`[AppContext] Loading data for facility: ${state.activeFacilityId}`);
 
         dispatch({ type: 'FETCH_DATA_START' });
         try {
@@ -209,8 +214,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
                 apiService.fetchVehicles()
             ]);
 
+            // Nếu facilityId đã thay đổi khi fetch đang chạy → bỏ qua kết quả cũ
+            if (cancelled) {
+                console.log(`[AppContext] Fetch cho ${state.activeFacilityId} bị cancel (facility đã đổi)`);
+                return;
+            }
+
             const fastResult = fastData as any;
             const vehicleResult = vehicleData as any;
+
+            console.log(`[AppContext] Loaded: ${fastResult.users?.length || 0} users, ${fastResult.jobs?.length || 0} jobs for ${state.activeFacilityId}`);
 
             dispatch({ 
                 type: 'FETCH_DATA_SUCCESS', 
@@ -222,11 +235,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
                 } 
             });
         } catch (e) {
+            if (cancelled) return;
             const errorMessage = e instanceof Error ? e.message : 'Đã có lỗi không xác định xảy ra';
             dispatch({ type: 'FETCH_DATA_FAILURE', payload: errorMessage });
         }
     };
     loadData();
+
+    return () => { cancelled = true; }; // Cleanup: cancel khi facilityId thay đổi
   }, [state.activeFacilityId]);
 
   // Optimized refresh: Only fetches lightweight data (Jobs/Bays/Users), reusing existing Vehicles.

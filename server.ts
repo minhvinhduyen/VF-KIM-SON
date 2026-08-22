@@ -28,9 +28,9 @@ async function startServer() {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-  // Middleware xác định facility (Cơ sở) đang tương tác từ Header
+  // Middleware xác định facility (Cơ sở) — ưu tiên query param, fallback sang header
   app.use((req, res, next) => {
-    const facilityId = req.headers['x-facility-id'] || '';
+    const facilityId = (req.query as any).facilityId || req.headers['x-facility-id'] || '';
     (req as any).facilityId = String(facilityId);
     next();
   });
@@ -38,7 +38,7 @@ async function startServer() {
   // Logging middleware to debug requests
   app.use((req, res, next) => {
     if (req.url.startsWith('/api')) {
-      console.log(`[API Request] [Facility: ${(req as any).facilityId}] ${req.method} ${req.url}`);
+      console.log(`[API Request] [Facility: "${(req as any).facilityId}"] ${req.method} ${req.url}`);
     }
     next();
   });

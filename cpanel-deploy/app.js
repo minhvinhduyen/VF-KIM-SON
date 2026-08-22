@@ -150,7 +150,11 @@ const getFacilitiesList = () => {
 
 // === MIDDLEWARE ===
 app.use((req, res, next) => {
-    req.facilityId = String(req.headers['x-facility-id'] || '');
+    // Ưu tiên query param, fallback sang header (tương thích ngược)
+    req.facilityId = String(req.query.facilityId || req.headers['x-facility-id'] || '');
+    if (req.url.includes('/api/') && !req.url.includes('/api/login') && !req.url.includes('/api/facilities')) {
+        console.log(`[FACILITY] ${req.method} ${req.url} → facilityId: "${req.facilityId}"`);
+    }
     next();
 });
 
