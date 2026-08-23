@@ -25,9 +25,13 @@ const getHeaders = () => {
 // Thêm facilityId vào URL dưới dạng query parameter (thay vì header)
 // Lý do: Netlify proxy có thể strip custom header x-facility-id
 const withFacility = (url: string): string => {
-    if (!activeFacilityId) return url;
     const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}facilityId=${encodeURIComponent(activeFacilityId)}`;
+    // Cache-busting: thêm timestamp để CDN/proxy không trả response cũ
+    let result = `${url}${separator}_t=${Date.now()}`;
+    if (activeFacilityId) {
+        result += `&facilityId=${encodeURIComponent(activeFacilityId)}`;
+    }
+    return result;
 };
 
 const handleResponse = async (res: Response) => {

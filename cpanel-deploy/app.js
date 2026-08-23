@@ -8,12 +8,18 @@ const fs = require('fs');
 const mysql = require('mysql2/promise');
 
 const app = express();
-// Middleware CORS cực mạnh cho Phusion Passenger / Apache / cPanel
+// Middleware CORS + Anti-Cache cho API
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-facility-id, Authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // QUAN TRỌNG: Cấm LiteSpeed, Netlify CDN, và browser cache response API
+    // Nguyên nhân: cache cũ gây ra bug user bị xóa tự xuất hiện lại
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
