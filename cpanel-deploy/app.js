@@ -160,6 +160,21 @@ app.use((req, res, next) => {
 
 // === API ROUTES (Hỗ trợ cả /api/... và /vf-api/api/...) ===
 
+// Debug endpoint — kiểm tra Netlify proxy có forward query params và headers không
+app.get(['/api/debug', '/vf-api/api/debug'], (req, res) => {
+    res.json({
+        facilityId: req.facilityId,
+        queryParams: req.query,
+        headers: {
+            'x-facility-id': req.headers['x-facility-id'] || '(missing)',
+            'host': req.headers['host'],
+            'x-forwarded-for': req.headers['x-forwarded-for'] || '(missing)',
+        },
+        timestamp: new Date().toISOString()
+    });
+});
+
+
 // Scan Plate AI
 app.post(['/api/scan-plate', '/vf-api/api/scan-plate'], async (req, res) => {
     try {
