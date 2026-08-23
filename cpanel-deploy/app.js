@@ -124,7 +124,13 @@ const dbDelete = async (fId, table, id) => {
 
 const getSuperAdmin = (username) => {
     loadConfigs();
-    return (configs.super_admins || []).find(sa => sa.username === username) || null;
+    const sa = (configs.super_admins || []).find(sa => sa.username === username);
+    if (!sa) return null;
+    // Mật khẩu lưu trong Environment Variables trên cPanel, KHÔNG lưu trong code
+    // Tên biến: SA_PASS_superadmin, SA_PASS_kscl-ks, ...
+    const envKey = `SA_PASS_${username}`;
+    const password = process.env[envKey] || '';
+    return { ...sa, password };
 };
 
 const findUserByUsername = async (username) => {

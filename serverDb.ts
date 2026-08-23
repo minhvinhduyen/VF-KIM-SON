@@ -344,7 +344,12 @@ export const importVehicles = async (facilityId: string, vehicles: any[]): Promi
 export const getSuperAdmin = (username: string): any | null => {
     loadConfigs();
     if (configs && Array.isArray(configs.super_admins)) {
-        return configs.super_admins.find((sa: any) => sa.username === username) || null;
+        const sa = configs.super_admins.find((sa: any) => sa.username === username);
+        if (!sa) return null;
+        // Mật khẩu lưu trong Environment Variables, KHÔNG lưu trong code
+        const envKey = `SA_PASS_${username}`;
+        const password = process.env[envKey] || '';
+        return { ...sa, password };
     }
     return null;
 };

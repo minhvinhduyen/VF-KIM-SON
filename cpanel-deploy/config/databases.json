@@ -2,8 +2,13 @@
   "super_admins": [
     {
       "username": "superadmin",
-      "password": "Lethiduyen1212@",
       "name": "Quản Lý Dịch Vụ Chuỗi Vinfast Kim Sơn",
+      "role": "SuperAdmin",
+      "managedFacilities": ["facility_1", "facility_2", "facility_3", "facility_4"]
+    },
+    {
+      "username": "kscl-ks",
+      "name": "Kiểm Soát Chất Lượng",
       "role": "SuperAdmin",
       "managedFacilities": ["facility_1", "facility_2", "facility_3", "facility_4"]
     }
