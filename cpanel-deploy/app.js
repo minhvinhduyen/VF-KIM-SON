@@ -122,14 +122,67 @@ const dbDelete = async (fId, table, id) => {
     await pool.query(`DELETE FROM \`${table}\` WHERE \`id\`=?`, [id]);
 };
 
+// Load .env if present (supports cPanel or local env files)
+const loadEnvFile = () => {
+    try {
+        const candidatePaths = [
+            path.join(__dirname, '.env'),
+            path.join(process.cwd(), '.env')
+        ];
+        for (const envPath of candidatePaths) {
+            if (fs.existsSync(envPath)) {
+                const content = fs.readFileSync(envPath, 'utf-8');
+                content.split('\n').forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+                        const idx = trimmed.indexOf('=');
+                        const k = trimmed.substring(0, idx).trim();
+                        const v = trimmed.substring(idx + 1).trim().replace(/^["']|["']$/g, '');
+                        if (k && !process.env[k]) {
+                            process.env[k] = v;
+                        }
+                    }
+                });
+            }
+        }
+    } catch(e) { console.error("Error loading .env:", e); }
+};
+loadEnvFile();
+
 const getSuperAdmin = (username) => {
     loadConfigs();
+    loadEnvFile();
     const sa = (configs.super_admins || []).find(sa => sa.username === username);
     if (!sa) return null;
-    // Mật khẩu lưu trong Environment Variables trên cPanel, KHÔNG lưu trong code
-    // Tên biến: SA_PASS_superadmin, SA_PASS_kscl-ks, ...
-    const envKey = `SA_PASS_${username}`;
-    const password = process.env[envKey] || '';
+    
+    // Check multiple possible env key formats:
+    // 1. SA_PASS_superadmin
+    // 2. SA_PASS_kscl_ks (replacing hyphens with underscores)
+    // 3. SA_PASS_kscl-ks
+    // 4. Case variations
+    const cleanUser = username.replace(/[^a-zA-Z0-9]/g, '_');
+    const candidates = [
+        `SA_PASS_${username}`,
+        `SA_PASS_${cleanUser}`,
+        `SA_PASS_${username.toUpperCase()}`,
+        `SA_PASS_${cleanUser.toUpperCase()}`,
+        `SA_PASS_${username.toLowerCase()}`,
+        `SA_PASS_${cleanUser.toLowerCase()}`
+    ];
+    
+    let password = '';
+    for (const key of candidates) {
+        if (process.env[key]) {
+            password = process.env[key];
+            break;
+        }
+    }
+    
+    // Fallback: check if password was directly defined in databases.json
+    if (!password && sa.password) {
+        password = sa.password;
+    }
+    
     return { ...sa, password };
 };
 
@@ -172,8 +225,14 @@ app.use((req, res, next) => {
 
 // === API ROUTES (Hỗ trợ cả /api/... và /vf-api/api/...) ===
 
-// Debug endpoint — kiểm tra Netlify proxy có forward query params và headers không
+// Debug endpoint — kiểm tra Netlify proxy, headers và trạng thái SuperAdmin
 app.get(['/api/debug', '/vf-api/api/debug'], (req, res) => {
+    loadEnvFile();
+    const sa_superadmin = getSuperAdmin('superadmin');
+    const sa_kscl = getSuperAdmin('kscl-ks');
+
+    const envKeys = Object.keys(process.env).filter(k => k.startsWith('SA_PASS') || k.includes('GEMINI'));
+
     res.json({
         facilityId: req.facilityId,
         queryParams: req.query,
@@ -182,6 +241,19 @@ app.get(['/api/debug', '/vf-api/api/debug'], (req, res) => {
             'host': req.headers['host'],
             'x-forwarded-for': req.headers['x-forwarded-for'] || '(missing)',
         },
+        superAdminStatus: {
+            superadmin: {
+                found: !!sa_superadmin,
+                hasPassword: !!sa_superadmin?.password,
+                passwordLength: sa_superadmin?.password ? sa_superadmin.password.length : 0
+            },
+            'kscl-ks': {
+                found: !!sa_kscl,
+                hasPassword: !!sa_kscl?.password,
+                passwordLength: sa_kscl?.password ? sa_kscl.password.length : 0
+            }
+        },
+        detectedEnvKeys: envKeys,
         timestamp: new Date().toISOString()
     });
 });

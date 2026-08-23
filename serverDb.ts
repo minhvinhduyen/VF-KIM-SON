@@ -346,9 +346,25 @@ export const getSuperAdmin = (username: string): any | null => {
     if (configs && Array.isArray(configs.super_admins)) {
         const sa = configs.super_admins.find((sa: any) => sa.username === username);
         if (!sa) return null;
-        // Mật khẩu lưu trong Environment Variables, KHÔNG lưu trong code
-        const envKey = `SA_PASS_${username}`;
-        const password = process.env[envKey] || '';
+        const cleanUser = username.replace(/[^a-zA-Z0-9]/g, '_');
+        const candidates = [
+            `SA_PASS_${username}`,
+            `SA_PASS_${cleanUser}`,
+            `SA_PASS_${username.toUpperCase()}`,
+            `SA_PASS_${cleanUser.toUpperCase()}`,
+            `SA_PASS_${username.toLowerCase()}`,
+            `SA_PASS_${cleanUser.toLowerCase()}`
+        ];
+        let password = '';
+        for (const key of candidates) {
+            if (process.env[key]) {
+                password = process.env[key];
+                break;
+            }
+        }
+        if (!password && sa.password) {
+            password = sa.password;
+        }
         return { ...sa, password };
     }
     return null;
