@@ -302,7 +302,7 @@ const ManagerDashboard: React.FC = () => {
                 );
                 return <PausedJobsList jobs={pausedJobs} showResumeButton={false} />;
             case 'quotation_followup':
-                return <QuotationFollowupList onCreateAppointment={handleCreateAppointmentFromQuotation} />;
+                return <QuotationFollowupList readOnly={true} />;
             default:
                 return null;
         }
