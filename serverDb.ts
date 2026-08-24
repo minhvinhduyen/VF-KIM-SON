@@ -396,13 +396,13 @@ export const initSuperAdminsTable = async () => {
     }
 };
 
-export const getSuperAdmin = async (username: string): Promise<any | null> => {
+export const getSuperAdmin = async (identifier: string): Promise<any | null> => {
     loadConfigs();
     await initSuperAdminsTable();
     try {
         const pool = getPool('facility_1');
         if (pool) {
-            const [rows]: any = await pool.query(`SELECT * FROM \`super_admins\` WHERE \`username\` = ? LIMIT 1`, [username]);
+            const [rows]: any = await pool.query(`SELECT * FROM \`super_admins\` WHERE \`username\` = ? OR \`id\` = ? LIMIT 1`, [identifier, identifier]);
             if (rows && rows.length > 0) {
                 const row = rows[0];
                 let managedFacilities = [];
@@ -426,15 +426,15 @@ export const getSuperAdmin = async (username: string): Promise<any | null> => {
     }
 
     if (configs && Array.isArray(configs.super_admins)) {
-        const sa = configs.super_admins.find((sa: any) => sa.username === username);
+        const sa = configs.super_admins.find((sa: any) => sa.username === identifier || sa.id === identifier);
         if (!sa) return null;
-        const cleanUser = username.replace(/[^a-zA-Z0-9]/g, '_');
+        const cleanUser = sa.username.replace(/[^a-zA-Z0-9]/g, '_');
         const candidates = [
-            `SA_PASS_${username}`,
+            `SA_PASS_${sa.username}`,
             `SA_PASS_${cleanUser}`,
-            `SA_PASS_${username.toUpperCase()}`,
+            `SA_PASS_${sa.username.toUpperCase()}`,
             `SA_PASS_${cleanUser.toUpperCase()}`,
-            `SA_PASS_${username.toLowerCase()}`,
+            `SA_PASS_${sa.username.toLowerCase()}`,
             `SA_PASS_${cleanUser.toLowerCase()}`
         ];
         let password = '';

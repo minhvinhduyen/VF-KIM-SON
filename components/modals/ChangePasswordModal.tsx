@@ -38,8 +38,9 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
 
     setIsLoading(true);
     try {
+      const usernameToSend = (user as any).username || user.id;
       await apiService.changeMyPassword({
-        username: user.id,
+        username: usernameToSend,
         currentPassword,
         newPassword,
         facilityId: user.facilityId,
@@ -68,6 +69,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
     onClose();
   };
 
+  const displayUsername = (user as any).username || user.id;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 transform transition-all">
@@ -90,7 +93,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="text-xs text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-            Tài khoản đang đăng nhập: <span className="font-bold text-brand-blue">{user.name} ({user.id})</span>
+            Tài khoản đang đăng nhập: <span className="font-bold text-brand-blue">{user.name} ({displayUsername})</span>
           </div>
 
           {error && (

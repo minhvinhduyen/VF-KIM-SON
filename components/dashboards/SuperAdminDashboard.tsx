@@ -130,7 +130,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const handleTabChange = (tabId: 'overview' | string) => {
     setActiveTab(tabId);
-    if (tabId !== 'overview') {
+    if (tabId.startsWith('facility_')) {
       setFacility(tabId);
     }
   };
