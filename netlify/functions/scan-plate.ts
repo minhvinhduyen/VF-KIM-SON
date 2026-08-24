@@ -15,26 +15,28 @@ export const handler: Handler = async (event) => {
 
   try {
     const { imageBase64 } = JSON.parse(event.body || "{}");
-    let apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    const rawKeys: string[] = [];
+    if (process.env.GEMINI_API_KEY) rawKeys.push(...process.env.GEMINI_API_KEY.split(','));
+    if (process.env.GEMINI_API_KEYS) rawKeys.push(...process.env.GEMINI_API_KEYS.split(/[\r\n,]+/));
+    Object.keys(process.env).forEach(k => {
+      if (/^GEMINI_API_KEY_\d+$/i.test(k) && process.env[k]) {
+        rawKeys.push(process.env[k] as string);
+      }
+    });
+    if (process.env.VITE_GEMINI_API_KEY) rawKeys.push(...process.env.VITE_GEMINI_API_KEY.split(','));
+    const apiKeys = Array.from(new Set(
+      rawKeys
+        .map(k => (k || '').trim().replace(/^["']|["']$/g, ''))
+        .filter(k => k && k !== 'your_actual_gemini_api_key_here' && k.length > 10)
+    ));
 
-    if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
+    if (apiKeys.length === 0) {
       console.error("Missing Gemini API Key in Netlify environment.");
       return {
         statusCode: 500,
         body: JSON.stringify({ error: "GEMINI_API_KEY is not configured on Netlify." }),
       };
     }
-
-    // Sanitize the API Key: remove whitespace and quotes
-    apiKey = apiKey.trim();
-    if ((apiKey.startsWith('"') && apiKey.endsWith('"')) || 
-        (apiKey.startsWith("'") && apiKey.endsWith("'"))) {
-      apiKey = apiKey.substring(1, apiKey.length - 1);
-    }
-    apiKey = apiKey.trim();
-
-    // Log diagnostic info (safely masked) to Netlify console for troubleshooting
-    console.log(`[Diagnostic] API Key processed: length=${apiKey.length}, startsWithAQ=${apiKey.startsWith('AQ.')}, prefixCheck=${apiKey.substring(0, 6)}...`);
 
     if (!imageBase64) {
       return {
@@ -43,32 +45,54 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Initialize AI
-    // @google/genai SDK expects an options object with apiKey
-    const client = new GoogleGenAI({ apiKey });
-    
-    const result = await client.models.generateContent({
-      model: "gemini-3.1-flash-lite",
-      contents: [{
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-          { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
-        ]
-      }]
-    });
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+    let lastError: any = null;
+    let plateResult: string | null = null;
 
-    const plate = (result.text || "").trim();
-    
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plate }),
-    };
+    for (let i = 0; i < apiKeys.length; i++) {
+      const apiKey = apiKeys[i];
+      const client = new GoogleGenAI({ apiKey });
+
+      for (const modelName of candidateModels) {
+        try {
+          const result = await client.models.generateContent({
+            model: modelName,
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+                { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
+              ]
+            }]
+          });
+
+          let text = (result.text || "").trim();
+          text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
+          plateResult = text;
+          break;
+        } catch (modelErr: any) {
+          lastError = modelErr;
+          if (modelErr.message && (modelErr.message.includes('429') || modelErr.message.includes('Quota') || modelErr.message.includes('RESOURCE_EXHAUSTED'))) {
+            break;
+          }
+        }
+      }
+      if (plateResult !== null) break;
+    }
+
+    if (plateResult !== null) {
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plate: plateResult }),
+      };
+    }
+
+    throw lastError || new Error("Failed to scan license plate");
   } catch (error: any) {
     console.error("[Netlify Function Error]:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message || "Failed to scan license plate" }),
+      body: JSON.stringify({ error: error.message || "Internal Server Error" }),
     };
   }
 };

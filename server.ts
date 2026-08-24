@@ -43,41 +43,80 @@ async function startServer() {
     next();
   });
 
+  // Helper to collect all Gemini API Keys
+  const getGeminiApiKeys = () => {
+    const rawKeys: string[] = [];
+    if (process.env.GEMINI_API_KEY) rawKeys.push(...process.env.GEMINI_API_KEY.split(','));
+    if (process.env.GEMINI_API_KEYS) rawKeys.push(...process.env.GEMINI_API_KEYS.split(/[\r\n,]+/));
+    Object.keys(process.env).forEach(k => {
+      if (/^GEMINI_API_KEY_\d+$/i.test(k) && process.env[k]) {
+        rawKeys.push(process.env[k] as string);
+      }
+    });
+    if (process.env.VITE_GEMINI_API_KEY) rawKeys.push(...process.env.VITE_GEMINI_API_KEY.split(','));
+    return Array.from(new Set(
+      rawKeys
+        .map(k => (k || '').trim().replace(/^["']|["']$/g, ''))
+        .filter(k => k && k !== 'your_actual_gemini_api_key_here' && k.length > 10)
+    ));
+  };
+
   // --- API Route for License Plate Scanning ---
   app.post("/api/scan-plate", async (req, res) => {
     try {
       const { imageBase64 } = req.body;
-      let apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-
-      if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
-        console.error("Missing Gemini API Key in environment.");
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
-      }
-
-      apiKey = apiKey.trim();
-      if ((apiKey.startsWith('"') && apiKey.endsWith('"')) || 
-          (apiKey.startsWith("'") && apiKey.endsWith("'"))) {
-        apiKey = apiKey.substring(1, apiKey.length - 1);
-      }
-      apiKey = apiKey.trim();
-
       if (!imageBase64) {
-        return res.status(400).json({ error: "No image data provided" });
+        return res.status(400).json({ error: "Không có dữ liệu hình ảnh." });
       }
 
-      const genAI = new GoogleGenAI({ apiKey });
-      const result = await genAI.models.generateContent({
-        model: "gemini-3.1-flash-lite",
-        contents: [{
-          parts: [
-            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-            { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
-          ]
-        }]
-      });
+      const apiKeys = getGeminiApiKeys();
+      if (apiKeys.length === 0) {
+        return res.status(500).json({ error: "Chưa cấu hình GEMINI_API_KEY trên server." });
+      }
 
-      const plate = (result.text || "").trim();
-      res.json({ plate });
+      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+      let lastError: any = null;
+      let plateResult: string | null = null;
+
+      for (let i = 0; i < apiKeys.length; i++) {
+        const apiKey = apiKeys[i];
+        const genAI = new GoogleGenAI({ apiKey });
+
+        for (const modelName of candidateModels) {
+          try {
+            const result = await genAI.models.generateContent({
+              model: modelName,
+              contents: [{
+                parts: [
+                  { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+                  { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
+                ]
+              }]
+            });
+
+            let text = (result.text || "").trim();
+            text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
+            plateResult = text;
+            console.log(`[ScanPlate] Thành công với Key #${i + 1} và Model ${modelName}: "${text}"`);
+            break;
+          } catch (modelErr: any) {
+            console.warn(`[ScanPlate] Key #${i + 1} với model ${modelName} thất bại:`, modelErr.message);
+            lastError = modelErr;
+            if (modelErr.message && (modelErr.message.includes('429') || modelErr.message.includes('Quota') || modelErr.message.includes('RESOURCE_EXHAUSTED'))) {
+              console.warn(`[ScanPlate] Key #${i + 1} hết hạn ngạch / rate limit, chuyển sang Key tiếp theo.`);
+              break;
+            }
+          }
+        }
+
+        if (plateResult !== null) break;
+      }
+
+      if (plateResult !== null) {
+        return res.json({ plate: plateResult });
+      }
+
+      throw lastError || new Error("Không thể nhận diện biển số qua AI.");
     } catch (error: any) {
       console.error("[API Error] Gemini Error:", error);
       res.status(500).json({ error: error.message || "Failed to scan license plate" });
