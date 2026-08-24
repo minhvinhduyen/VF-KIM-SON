@@ -149,17 +149,101 @@ const loadEnvFile = () => {
 };
 loadEnvFile();
 
-const getSuperAdmin = (username) => {
-    loadConfigs();
+const getPrimaryPool = () => {
+    const c = getFacilityConfig('facility_1');
+    if (!c) return null;
+    return getMysqlPool('facility_1', c.mysql);
+};
+
+let tableInitialized = false;
+const initSuperAdminsTable = async () => {
+    if (tableInitialized) return;
+    try {
+        const pool = getPrimaryPool();
+        if (!pool) return;
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`super_admins\` (
+                \`id\` VARCHAR(50) PRIMARY KEY,
+                \`username\` VARCHAR(50) UNIQUE NOT NULL,
+                \`name\` VARCHAR(100) NOT NULL,
+                \`password\` VARCHAR(255) NOT NULL,
+                \`role\` VARCHAR(50) DEFAULT 'SuperAdmin',
+                \`managedFacilities\` TEXT,
+                \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // Seed initial accounts if table is empty
+        const [rows] = await pool.query(`SELECT COUNT(*) as count FROM \`super_admins\``);
+        if (rows[0].count === 0) {
+            console.log('[SuperAdmin] Seeding initial super_admins into MySQL...');
+            const defaultAccounts = [
+                {
+                    id: 'sa_superadmin',
+                    username: 'superadmin',
+                    name: 'Quản Lý Dịch Vụ Chuỗi Vinfast Kim Sơn',
+                    password: process.env.SA_PASS_superadmin || 'Lethiduyen1212@',
+                    role: 'SuperAdmin',
+                    managedFacilities: JSON.stringify(["facility_1", "facility_2", "facility_3", "facility_4"])
+                },
+                {
+                    id: 'sa_kscl_ks',
+                    username: 'kscl-ks',
+                    name: 'Kiểm Soát Chất Lượng',
+                    password: process.env.SA_PASS_kscl_ks || process.env['SA_PASS_kscl-ks'] || '1',
+                    role: 'SuperAdmin',
+                    managedFacilities: JSON.stringify(["facility_1", "facility_2", "facility_3", "facility_4"])
+                }
+            ];
+            for (const acc of defaultAccounts) {
+                await pool.query(
+                    `INSERT INTO \`super_admins\` (\`id\`, \`username\`, \`name\`, \`password\`, \`role\`, \`managedFacilities\`) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [acc.id, acc.username, acc.name, acc.password, acc.role, acc.managedFacilities]
+                );
+            }
+            console.log('[SuperAdmin] Initial accounts seeded successfully.');
+        }
+        tableInitialized = true;
+    } catch (e) {
+        console.error('[SuperAdmin] Error initializing super_admins table:', e.message);
+    }
+};
+
+const getSuperAdmin = async (username) => {
     loadEnvFile();
+    await initSuperAdminsTable();
+    try {
+        const pool = getPrimaryPool();
+        if (pool) {
+            const [rows] = await pool.query(`SELECT * FROM \`super_admins\` WHERE \`username\` = ? LIMIT 1`, [username]);
+            if (rows && rows.length > 0) {
+                const row = rows[0];
+                let managedFacilities = [];
+                try {
+                    managedFacilities = typeof row.managedFacilities === 'string' ? JSON.parse(row.managedFacilities) : (row.managedFacilities || []);
+                } catch(e) { managedFacilities = []; }
+                return {
+                    id: row.id,
+                    username: row.username,
+                    name: row.name,
+                    password: row.password,
+                    role: row.role || 'SuperAdmin',
+                    managedFacilities,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at
+                };
+            }
+        }
+    } catch(e) {
+        console.error('[getSuperAdmin DB error, fallback to env]:', e.message);
+    }
+
+    // Fallback to config / env
+    loadConfigs();
     const sa = (configs.super_admins || []).find(sa => sa.username === username);
     if (!sa) return null;
     
-    // Check multiple possible env key formats:
-    // 1. SA_PASS_superadmin
-    // 2. SA_PASS_kscl_ks (replacing hyphens with underscores)
-    // 3. SA_PASS_kscl-ks
-    // 4. Case variations
     const cleanUser = username.replace(/[^a-zA-Z0-9]/g, '_');
     const candidates = [
         `SA_PASS_${username}`,
@@ -178,7 +262,6 @@ const getSuperAdmin = (username) => {
         }
     }
     
-    // Fallback: check if password was directly defined in databases.json
     if (!password && sa.password) {
         password = sa.password;
     }
@@ -226,10 +309,10 @@ app.use((req, res, next) => {
 // === API ROUTES (Hỗ trợ cả /api/... và /vf-api/api/...) ===
 
 // Debug endpoint — kiểm tra Netlify proxy, headers và trạng thái SuperAdmin
-app.get(['/api/debug', '/vf-api/api/debug'], (req, res) => {
+app.get(['/api/debug', '/vf-api/api/debug'], async (req, res) => {
     loadEnvFile();
-    const sa_superadmin = getSuperAdmin('superadmin');
-    const sa_kscl = getSuperAdmin('kscl-ks');
+    const sa_superadmin = await getSuperAdmin('superadmin');
+    const sa_kscl = await getSuperAdmin('kscl-ks');
 
     const envKeys = Object.keys(process.env).filter(k => k.startsWith('SA_PASS') || k.includes('GEMINI'));
 
@@ -308,7 +391,7 @@ app.post(['/api/users', '/vf-api/api/users'], async (req, res) => {
     try {
         const newUserId = String(req.body.id).trim();
         if (!newUserId) return res.status(400).json({ error: "Mã nhân viên không được để trống." });
-        const sa = getSuperAdmin(newUserId);
+        const sa = await getSuperAdmin(newUserId);
         if (sa) return res.status(400).json({ error: `Mã "${newUserId}" trùng với tài khoản Quản Lý Chuỗi.` });
         const dup = await findUserByUsername(newUserId);
         if (dup) {
@@ -345,13 +428,166 @@ app.post(['/api/vehicles/import', '/vf-api/api/vehicles/import'], async (req, re
     } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// === SUPER ADMIN CRUD & QUẢN TRỊ TÀI KHOẢN CHUỖI ===
+
+// GET /api/super-admins: Lấy danh sách tài khoản chuỗi
+app.get(['/api/super-admins', '/vf-api/api/super-admins'], async (req, res) => {
+    try {
+        await initSuperAdminsTable();
+        const pool = getPrimaryPool();
+        if (!pool) return res.status(500).json({ error: 'Không thể kết nối cơ sở dữ liệu chính.' });
+        const [rows] = await pool.query(`SELECT \`id\`, \`username\`, \`name\`, \`role\`, \`managedFacilities\`, \`created_at\`, \`updated_at\` FROM \`super_admins\` ORDER BY \`created_at\` ASC`);
+        const list = rows.map(r => {
+            let managedFacilities = [];
+            try { managedFacilities = typeof r.managedFacilities === 'string' ? JSON.parse(r.managedFacilities) : (r.managedFacilities || []); } catch(e) { managedFacilities = []; }
+            return { ...r, managedFacilities };
+        });
+        res.json(list);
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/super-admins: Thêm tài khoản chuỗi mới
+app.post(['/api/super-admins', '/vf-api/api/super-admins'], async (req, res) => {
+    try {
+        await initSuperAdminsTable();
+        const { username, name, password, role, managedFacilities } = req.body;
+        if (!username || !password || !name) {
+            return res.status(400).json({ error: 'Vui lòng nhập đầy đủ tên đăng nhập, họ tên và mật khẩu.' });
+        }
+        const strUser = String(username).trim().toLowerCase();
+        const pool = getPrimaryPool();
+        
+        // Kiểm tra trùng username
+        const [existing] = await pool.query(`SELECT \`id\` FROM \`super_admins\` WHERE \`username\` = ?`, [strUser]);
+        if (existing.length > 0) {
+            return res.status(400).json({ error: `Tên đăng nhập "${strUser}" đã tồn tại.` });
+        }
+        
+        const id = 'sa_' + strUser.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + Date.now().toString().slice(-4);
+        const facilitiesJson = JSON.stringify(Array.isArray(managedFacilities) && managedFacilities.length > 0 ? managedFacilities : ["facility_1", "facility_2", "facility_3", "facility_4"]);
+        
+        await pool.query(
+            `INSERT INTO \`super_admins\` (\`id\`, \`username\`, \`name\`, \`password\`, \`role\`, \`managedFacilities\`) VALUES (?, ?, ?, ?, ?, ?)`,
+            [id, strUser, String(name).trim(), String(password), role || 'SuperAdmin', facilitiesJson]
+        );
+        res.json({ success: true, id, username: strUser, name, role: role || 'SuperAdmin' });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// PUT /api/super-admins/:id: Sửa thông tin tài khoản chuỗi
+app.put(['/api/super-admins/:id', '/vf-api/api/super-admins/:id'], async (req, res) => {
+    try {
+        await initSuperAdminsTable();
+        const { name, role, managedFacilities } = req.body;
+        const id = req.params.id;
+        const pool = getPrimaryPool();
+        const facilitiesJson = JSON.stringify(Array.isArray(managedFacilities) ? managedFacilities : ["facility_1", "facility_2", "facility_3", "facility_4"]);
+        
+        await pool.query(
+            `UPDATE \`super_admins\` SET \`name\` = ?, \`role\` = ?, \`managedFacilities\` = ? WHERE \`id\` = ?`,
+            [String(name).trim(), role || 'SuperAdmin', facilitiesJson, id]
+        );
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE /api/super-admins/:id: Xóa tài khoản chuỗi
+app.delete(['/api/super-admins/:id', '/vf-api/api/super-admins/:id'], async (req, res) => {
+    try {
+        await initSuperAdminsTable();
+        const id = req.params.id;
+        const pool = getPrimaryPool();
+        
+        // Không cho phép xóa hết toàn bộ tài khoản chuỗi
+        const [rows] = await pool.query(`SELECT COUNT(*) as count FROM \`super_admins\``);
+        if (rows[0].count <= 1) {
+            return res.status(400).json({ error: 'Không thể xóa tài khoản Quản trị chuỗi duy nhất còn lại.' });
+        }
+        
+        await pool.query(`DELETE FROM \`super_admins\` WHERE \`id\` = ?`, [id]);
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/super-admins/:id/reset-password: Reset mật khẩu cho tài khoản chuỗi
+app.post(['/api/super-admins/:id/reset-password', '/vf-api/api/super-admins/:id/reset-password'], async (req, res) => {
+    try {
+        await initSuperAdminsTable();
+        const { newPassword } = req.body;
+        const id = req.params.id;
+        if (!newPassword || String(newPassword).trim() === '') {
+            return res.status(400).json({ error: 'Mật khẩu mới không được để trống.' });
+        }
+        const pool = getPrimaryPool();
+        await pool.query(`UPDATE \`super_admins\` SET \`password\` = ? WHERE \`id\` = ?`, [String(newPassword), id]);
+        res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/change-password: Tự đổi mật khẩu người dùng đang đăng nhập
+app.post(['/api/change-password', '/vf-api/api/change-password'], async (req, res) => {
+    try {
+        const { username, currentPassword, newPassword, facilityId } = req.body;
+        if (!username || !currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.' });
+        }
+        const strUser = String(username).trim();
+        const strOldPass = String(currentPassword);
+        const strNewPass = String(newPassword);
+
+        // 1. Kiểm tra nếu là SuperAdmin
+        const sa = await getSuperAdmin(strUser);
+        if (sa) {
+            if (String(sa.password) !== strOldPass) {
+                return res.status(400).json({ error: 'Mật khẩu hiện tại không chính xác.' });
+            }
+            const pool = getPrimaryPool();
+            await pool.query(`UPDATE \`super_admins\` SET \`password\` = ? WHERE \`username\` = ?`, [strNewPass, strUser]);
+            return res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+        }
+
+        // 2. Kiểm tra nếu là tài khoản cơ sở
+        const targetFacility = facilityId || req.facilityId;
+        if (!targetFacility) {
+            return res.status(400).json({ error: 'Không xác định được cơ sở của tài khoản.' });
+        }
+        const userResult = await findUserInFacility(strUser, targetFacility);
+        if (!userResult) {
+            return res.status(404).json({ error: 'Không tìm thấy tài khoản người dùng.' });
+        }
+        if (String(userResult.user.password) !== strOldPass) {
+            return res.status(400).json({ error: 'Mật khẩu hiện tại không chính xác.' });
+        }
+
+        // Cập nhật mật khẩu trong bảng users của cơ sở
+        await dbUpdate(targetFacility, 'users', userResult.user.id, {
+            ...userResult.user,
+            password: strNewPass
+        });
+        return res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Login
 app.post(['/api/login', '/vf-api/api/login'], async (req, res) => {
     try {
         const { username, password, facilityId: requestedFacilityId } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Vui lòng nhập đầy đủ." });
         const strUser = String(username).trim(), strPass = String(password);
         // SuperAdmin - tài khoản quản lý toàn chuỗi
-        const sa = getSuperAdmin(strUser);
+        const sa = await getSuperAdmin(strUser);
         if (sa && String(sa.password) === strPass) { const { password: _, ...u } = sa; return res.json({ success: true, user: u }); }
         
         let result = null;

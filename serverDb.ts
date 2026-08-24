@@ -341,8 +341,90 @@ export const importVehicles = async (facilityId: string, vehicles: any[]): Promi
     }
 };
 
-export const getSuperAdmin = (username: string): any | null => {
+let superAdminsTableInitialized = false;
+export const initSuperAdminsTable = async () => {
+    if (superAdminsTableInitialized) return;
+    try {
+        const pool = getPool('facility_1');
+        if (!pool) return;
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`super_admins\` (
+                \`id\` VARCHAR(50) PRIMARY KEY,
+                \`username\` VARCHAR(50) UNIQUE NOT NULL,
+                \`name\` VARCHAR(100) NOT NULL,
+                \`password\` VARCHAR(255) NOT NULL,
+                \`role\` VARCHAR(50) DEFAULT 'SuperAdmin',
+                \`managedFacilities\` TEXT,
+                \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // Seed initial accounts if table is empty
+        const [rows]: any = await pool.query(`SELECT COUNT(*) as count FROM \`super_admins\``);
+        if (rows[0].count === 0) {
+            console.log('[serverDb] Seeding initial super_admins into MySQL...');
+            const defaultAccounts = [
+                {
+                    id: 'sa_superadmin',
+                    username: 'superadmin',
+                    name: 'Quản Lý Dịch Vụ Chuỗi Vinfast Kim Sơn',
+                    password: process.env.SA_PASS_superadmin || 'Lethiduyen1212@',
+                    role: 'SuperAdmin',
+                    managedFacilities: JSON.stringify(["facility_1", "facility_2", "facility_3", "facility_4"])
+                },
+                {
+                    id: 'sa_kscl_ks',
+                    username: 'kscl-ks',
+                    name: 'Kiểm Soát Chất Lượng',
+                    password: process.env.SA_PASS_kscl_ks || process.env['SA_PASS_kscl-ks'] || '1',
+                    role: 'SuperAdmin',
+                    managedFacilities: JSON.stringify(["facility_1", "facility_2", "facility_3", "facility_4"])
+                }
+            ];
+            for (const acc of defaultAccounts) {
+                await pool.query(
+                    `INSERT INTO \`super_admins\` (\`id\`, \`username\`, \`name\`, \`password\`, \`role\`, \`managedFacilities\`) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [acc.id, acc.username, acc.name, acc.password, acc.role, acc.managedFacilities]
+                );
+            }
+            console.log('[serverDb] Initial super admin accounts seeded.');
+        }
+        superAdminsTableInitialized = true;
+    } catch (e: any) {
+        console.error('[serverDb] Error initializing super_admins table:', e.message);
+    }
+};
+
+export const getSuperAdmin = async (username: string): Promise<any | null> => {
     loadConfigs();
+    await initSuperAdminsTable();
+    try {
+        const pool = getPool('facility_1');
+        if (pool) {
+            const [rows]: any = await pool.query(`SELECT * FROM \`super_admins\` WHERE \`username\` = ? LIMIT 1`, [username]);
+            if (rows && rows.length > 0) {
+                const row = rows[0];
+                let managedFacilities = [];
+                try {
+                    managedFacilities = typeof row.managedFacilities === 'string' ? JSON.parse(row.managedFacilities) : (row.managedFacilities || []);
+                } catch(e) { managedFacilities = []; }
+                return {
+                    id: row.id,
+                    username: row.username,
+                    name: row.name,
+                    password: row.password,
+                    role: row.role || 'SuperAdmin',
+                    managedFacilities,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at
+                };
+            }
+        }
+    } catch(e: any) {
+        console.error('[serverDb] getSuperAdmin DB error, fallback to env:', e.message);
+    }
+
     if (configs && Array.isArray(configs.super_admins)) {
         const sa = configs.super_admins.find((sa: any) => sa.username === username);
         if (!sa) return null;
@@ -368,6 +450,72 @@ export const getSuperAdmin = (username: string): any | null => {
         return { ...sa, password };
     }
     return null;
+};
+
+export const getAllSuperAdmins = async (): Promise<any[]> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) return [];
+    const [rows]: any = await pool.query(`SELECT \`id\`, \`username\`, \`name\`, \`role\`, \`managedFacilities\`, \`created_at\`, \`updated_at\` FROM \`super_admins\` ORDER BY \`created_at\` ASC`);
+    return rows.map((r: any) => {
+        let managedFacilities = [];
+        try { managedFacilities = typeof r.managedFacilities === 'string' ? JSON.parse(r.managedFacilities) : (r.managedFacilities || []); } catch(e) { managedFacilities = []; }
+        return { ...r, managedFacilities };
+    });
+};
+
+export const addSuperAdmin = async (data: { username: string; name: string; password: string; role?: string; managedFacilities?: string[] }): Promise<any> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) throw new Error('Cannot connect to database');
+    const strUser = String(data.username).trim().toLowerCase();
+    const [existing]: any = await pool.query(`SELECT \`id\` FROM \`super_admins\` WHERE \`username\` = ?`, [strUser]);
+    if (existing.length > 0) {
+        throw new Error(`Tên đăng nhập "${strUser}" đã tồn tại.`);
+    }
+    const id = 'sa_' + strUser.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + Date.now().toString().slice(-4);
+    const facilitiesJson = JSON.stringify(Array.isArray(data.managedFacilities) && data.managedFacilities.length > 0 ? data.managedFacilities : ["facility_1", "facility_2", "facility_3", "facility_4"]);
+    await pool.query(
+        `INSERT INTO \`super_admins\` (\`id\`, \`username\`, \`name\`, \`password\`, \`role\`, \`managedFacilities\`) VALUES (?, ?, ?, ?, ?, ?)`,
+        [id, strUser, String(data.name).trim(), String(data.password), data.role || 'SuperAdmin', facilitiesJson]
+    );
+    return { success: true, id, username: strUser, name: data.name, role: data.role || 'SuperAdmin' };
+};
+
+export const updateSuperAdmin = async (id: string, data: { name: string; role?: string; managedFacilities?: string[] }): Promise<void> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) throw new Error('Cannot connect to database');
+    const facilitiesJson = JSON.stringify(Array.isArray(data.managedFacilities) ? data.managedFacilities : ["facility_1", "facility_2", "facility_3", "facility_4"]);
+    await pool.query(
+        `UPDATE \`super_admins\` SET \`name\` = ?, \`role\` = ?, \`managedFacilities\` = ? WHERE \`id\` = ?`,
+        [String(data.name).trim(), data.role || 'SuperAdmin', facilitiesJson, id]
+    );
+};
+
+export const deleteSuperAdmin = async (id: string): Promise<void> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) throw new Error('Cannot connect to database');
+    const [rows]: any = await pool.query(`SELECT COUNT(*) as count FROM \`super_admins\``);
+    if (rows[0].count <= 1) {
+        throw new Error('Không thể xóa tài khoản Quản trị chuỗi duy nhất còn lại.');
+    }
+    await pool.query(`DELETE FROM \`super_admins\` WHERE \`id\` = ?`, [id]);
+};
+
+export const resetSuperAdminPassword = async (id: string, newPassword: string): Promise<void> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) throw new Error('Cannot connect to database');
+    await pool.query(`UPDATE \`super_admins\` SET \`password\` = ? WHERE \`id\` = ?`, [String(newPassword), id]);
+};
+
+export const updateSuperAdminPasswordByUsername = async (username: string, newPassword: string): Promise<void> => {
+    await initSuperAdminsTable();
+    const pool = getPool('facility_1');
+    if (!pool) throw new Error('Cannot connect to database');
+    await pool.query(`UPDATE \`super_admins\` SET \`password\` = ? WHERE \`username\` = ?`, [String(newPassword), username]);
 };
 
 export const findUserByUsername = async (username: string): Promise<{ facilityId: string, user: any } | null> => {

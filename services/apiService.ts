@@ -208,3 +208,56 @@ export const fetchFacilities = async () => {
     });
     return handleResponse(res);
 };
+
+// --- Super Admin Management APIs ---
+
+export const fetchSuperAdmins = async () => {
+    const res = await fetch(withFacility('/api/super-admins'), {
+        headers: getHeaders()
+    });
+    return handleResponse(res);
+};
+
+export const addSuperAdmin = async (data: { username: string; name: string; password: string; role?: string; managedFacilities?: string[] }) => {
+    const res = await fetch(withFacility('/api/super-admins'), {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const updateSuperAdmin = async (id: string, data: { name: string; role?: string; managedFacilities?: string[] }) => {
+    const res = await fetch(withFacility(`/api/super-admins/${id}`), {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const deleteSuperAdmin = async (id: string) => {
+    const res = await fetch(withFacility(`/api/super-admins/${id}`), {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+    return handleResponse(res);
+};
+
+export const resetSuperAdminPassword = async (id: string, newPassword: string) => {
+    const res = await fetch(withFacility(`/api/super-admins/${id}/reset-password`), {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ newPassword })
+    });
+    return handleResponse(res);
+};
+
+export const changeMyPassword = async (data: { username: string; currentPassword: string; newPassword: string; facilityId?: string }) => {
+    const res = await fetch(withFacility('/api/change-password'), {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};

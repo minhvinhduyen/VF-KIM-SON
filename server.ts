@@ -169,14 +169,9 @@ async function startServer() {
   app.post('/api/users', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
-      const newUserId = String(req.body.id).trim();
-
-      if (!newUserId) {
-        return res.status(400).json({ error: "Mã nhân viên không được để trống." });
-      }
-
+      const newUserId = String(req.body.id).trim();      
       // 1. Kiểm tra trùng với Super Admin
-      const superAdmin = db.getSuperAdmin(newUserId);
+      const superAdmin = await db.getSuperAdmin(newUserId);
       if (superAdmin) {
         return res.status(400).json({ error: `Mã nhân viên "${newUserId}" trùng với tài khoản Quản Lý Chuỗi. Vui lòng chọn tên khác.` });
       }
@@ -195,7 +190,7 @@ async function startServer() {
       const result = await db.insert(facilityId, 'users', req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Add User failed:", error);
+      console.error("[API Error] Failed to create user:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -206,7 +201,6 @@ async function startServer() {
       const result = await db.update(facilityId, 'users', req.body.id, req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Update User failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -214,22 +208,125 @@ async function startServer() {
   app.delete('/api/users/:id', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
-      await db.deleteItem(facilityId, 'users', req.params.id);
+      await db.remove(facilityId, 'users', req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("[API Error] Delete User failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // --- BAYS API ---
+  // === SUPER ADMIN CRUD & QUẢN TRỊ TÀI KHOẢN CHUỖI ===
+
+  // GET /api/super-admins
+  app.get('/api/super-admins', async (req, res) => {
+    try {
+      const list = await db.getAllSuperAdmins();
+      res.json(list);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/super-admins
+  app.post('/api/super-admins', async (req, res) => {
+    try {
+      const { username, name, password, role, managedFacilities } = req.body;
+      if (!username || !password || !name) {
+        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ tên đăng nhập, họ tên và mật khẩu.' });
+      }
+      const result = await db.addSuperAdmin({ username, name, password, role, managedFacilities });
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/super-admins/:id
+  app.put('/api/super-admins/:id', async (req, res) => {
+    try {
+      const { name, role, managedFacilities } = req.body;
+      await db.updateSuperAdmin(req.params.id, { name, role, managedFacilities });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/super-admins/:id
+  app.delete('/api/super-admins/:id', async (req, res) => {
+    try {
+      await db.deleteSuperAdmin(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/super-admins/:id/reset-password
+  app.post('/api/super-admins/:id/reset-password', async (req, res) => {
+    try {
+      const { newPassword } = req.body;
+      if (!newPassword || String(newPassword).trim() === '') {
+        return res.status(400).json({ error: 'Mật khẩu mới không được để trống.' });
+      }
+      await db.resetSuperAdminPassword(req.params.id, newPassword);
+      res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/change-password: Tự đổi mật khẩu người dùng đang đăng nhập
+  app.post('/api/change-password', async (req, res) => {
+    try {
+      const { username, currentPassword, newPassword, facilityId } = req.body;
+      if (!username || !currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.' });
+      }
+      const strUser = String(username).trim();
+      const strOldPass = String(currentPassword);
+      const strNewPass = String(newPassword);
+
+      // 1. Kiểm tra nếu là SuperAdmin
+      const sa = await db.getSuperAdmin(strUser);
+      if (sa) {
+        if (String(sa.password) !== strOldPass) {
+          return res.status(400).json({ error: 'Mật khẩu hiện tại không chính xác.' });
+        }
+        await db.updateSuperAdminPasswordByUsername(strUser, strNewPass);
+        return res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+      }
+
+      // 2. Kiểm tra nếu là tài khoản cơ sở
+      const targetFacility = facilityId || (req as any).facilityId;
+      if (!targetFacility) {
+        return res.status(400).json({ error: 'Không xác định được cơ sở của tài khoản.' });
+      }
+      const userResult = await db.findUserInFacility(strUser, targetFacility);
+      if (!userResult) {
+        return res.status(404).json({ error: 'Không tìm thấy tài khoản người dùng.' });
+      }
+      if (String(userResult.user.password) !== strOldPass) {
+        return res.status(400).json({ error: 'Mật khẩu hiện tại không chính xác.' });
+      }
+
+      await db.update(targetFacility, 'users', userResult.user.id, {
+        ...userResult.user,
+        password: strNewPass
+      });
+      return res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Bays CRUD
   app.post('/api/bays', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
       const result = await db.insert(facilityId, 'bays', req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Add Bay failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -240,7 +337,6 @@ async function startServer() {
       const result = await db.update(facilityId, 'bays', req.body.id, req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Update Bay failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -248,22 +344,20 @@ async function startServer() {
   app.delete('/api/bays/:id', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
-      await db.deleteItem(facilityId, 'bays', req.params.id);
+      await db.remove(facilityId, 'bays', req.params.id);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("[API Error] Delete Bay failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // --- VEHICLES API ---
+  // Vehicles
   app.post('/api/vehicles', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
       const result = await db.insert(facilityId, 'vehicles', req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Add Vehicle failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -271,10 +365,9 @@ async function startServer() {
   app.put('/api/vehicles', async (req, res) => {
     try {
       const facilityId = (req as any).facilityId;
-      const result = await db.update(facilityId, 'vehicles', req.body.id, req.body);
+      const result = await db.update(facilityId, 'vehicles', req.body.licensePlate, req.body);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Update Vehicle failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -285,14 +378,11 @@ async function startServer() {
       const result = await db.importVehicles(facilityId, req.body.vehicles);
       res.json(result);
     } catch (error: any) {
-      console.error("[API Error] Import Vehicles failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // --- Authentication and Global Admin APIs ---
-
-  // API Đăng nhập tự động định tuyến
+  // Xác thực đăng nhập
   app.post('/api/login', async (req, res) => {
     try {
       const { username, password, facilityId: requestedFacilityId } = req.body;
@@ -305,7 +395,7 @@ async function startServer() {
       console.log(`[Login attempt] Username: "${strUsername}", Facility: "${requestedFacilityId || 'auto'}"`);
 
       // 1. Kiểm tra tài khoản Super Admin trước
-      const superAdmin = db.getSuperAdmin(strUsername);
+      const superAdmin = await db.getSuperAdmin(strUsername);
       if (superAdmin && String(superAdmin.password) === strPassword) {
         console.log(`[Login success] SuperAdmin: "${strUsername}"`);
         const { password: _, ...userWithoutPassword } = superAdmin;

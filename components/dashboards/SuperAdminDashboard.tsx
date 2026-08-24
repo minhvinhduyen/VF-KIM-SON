@@ -4,6 +4,8 @@ import { useApp } from '../../hooks/useApp';
 import * as apiService from '../../services/apiService';
 import ManagerDashboard from './ManagerDashboard';
 
+import SuperAdminManagement from '../management/SuperAdminManagement';
+
 interface BranchSummary {
   facilityId: string;
   facilityName: string;
@@ -194,6 +196,31 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  // --- Chain Admins Management View ---
+  if (activeTab === 'chain_admins') {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => handleTabChange('overview')}
+            className="flex items-center space-x-1.5 text-brand-blue hover:text-blue-800 font-bold transition-colors text-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            <span>← Quay lại Báo cáo Tổng quan</span>
+          </button>
+          <span className="text-sm font-bold bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-200">
+            Quản lý Tài khoản Chuỗi
+          </span>
+        </div>
+        <div className="flex-1">
+          <SuperAdminManagement />
+        </div>
+      </div>
+    );
+  }
+
   // --- Branch detail view ---
   if (activeTab !== 'overview') {
     const activeFacilityName = facilities.find(f => f.id === activeTab)?.name || 'Chi nhánh';
@@ -222,6 +249,33 @@ const SuperAdminDashboard: React.FC = () => {
   // --- Main Overview ---
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 font-sans">
+      {/* Top Navigation Tabs */}
+      <div className="flex items-center space-x-2 mb-4 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+        <button
+          onClick={() => handleTabChange('overview')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-1.5 ${
+            activeTab === 'overview'
+              ? 'bg-brand-blue text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <span>📊</span>
+          <span>Báo cáo Tổng quan Toàn Chuỗi</span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('chain_admins')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center space-x-1.5 ${
+            activeTab === 'chain_admins'
+              ? 'bg-purple-600 text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <span>🛡️</span>
+          <span>Quản lý Tài khoản Chuỗi</span>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div>
