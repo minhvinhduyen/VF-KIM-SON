@@ -74,7 +74,7 @@ async function startServer() {
         return res.status(500).json({ error: "Chưa cấu hình GEMINI_API_KEY trên server." });
       }
 
-      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+      const MODEL_NAME = 'gemini-3.1-flash-lite';
       let lastError: any = null;
       let plateResult: string | null = null;
 
@@ -82,34 +82,27 @@ async function startServer() {
         const apiKey = apiKeys[i];
         const genAI = new GoogleGenAI({ apiKey });
 
-        for (const modelName of candidateModels) {
-          try {
-            const result = await genAI.models.generateContent({
-              model: modelName,
-              contents: [{
-                parts: [
-                  { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-                  { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
-                ]
-              }]
-            });
+        try {
+          const result = await genAI.models.generateContent({
+            model: MODEL_NAME,
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+                { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
+              ]
+            }]
+          });
 
-            let text = (result.text || "").trim();
-            text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
-            plateResult = text;
-            console.log(`[ScanPlate] Thành công với Key #${i + 1} và Model ${modelName}: "${text}"`);
-            break;
-          } catch (modelErr: any) {
-            console.warn(`[ScanPlate] Key #${i + 1} với model ${modelName} thất bại:`, modelErr.message);
-            lastError = modelErr;
-            if (modelErr.message && (modelErr.message.includes('429') || modelErr.message.includes('Quota') || modelErr.message.includes('RESOURCE_EXHAUSTED'))) {
-              console.warn(`[ScanPlate] Key #${i + 1} hết hạn ngạch / rate limit, chuyển sang Key tiếp theo.`);
-              break;
-            }
-          }
+          let text = (result.text || "").trim();
+          text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
+          plateResult = text;
+          console.log(`[ScanPlate] Thành công với Key #${i + 1} (${MODEL_NAME}): "${text}"`);
+          break;
+        } catch (err: any) {
+          console.warn(`[ScanPlate] Key #${i + 1} gặp lỗi:`, err.message);
+          lastError = err;
+          continue;
         }
-
-        if (plateResult !== null) break;
       }
 
       if (plateResult !== null) {

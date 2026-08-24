@@ -398,7 +398,7 @@ const getGeminiApiKeys = () => {
     ));
 };
 
-// Scan Plate AI (with Multi-Key Rotation & Multi-Model Fallback)
+// Scan Plate AI (Powered by Gemini 3.1 Flash Lite with Multi-Key Rotation)
 app.post(['/api/scan-plate', '/vf-api/api/scan-plate'], async (req, res) => {
     try {
         const { imageBase64 } = req.body;
@@ -409,44 +409,36 @@ app.post(['/api/scan-plate', '/vf-api/api/scan-plate'], async (req, res) => {
             return res.status(500).json({ error: 'Chưa cấu hình GEMINI_API_KEY trên server.' });
         }
 
-        const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash'];
+        const MODEL_NAME = 'gemini-3.1-flash-lite';
         const { GoogleGenAI } = require('@google/genai');
 
         let lastError = null;
         let plateResult = null;
 
-        // Thử lần lượt từng API Key (Key rotation & Fallback)
+        // Thử lần lượt từng API Key nếu gặp lỗi hạn ngạch (429 Rate Limit / Quota Exceeded)
         for (let i = 0; i < apiKeys.length; i++) {
             const apiKey = apiKeys[i];
             const client = new GoogleGenAI({ apiKey });
 
-            for (const modelName of candidateModels) {
-                try {
-                    const result = await client.models.generateContent({
-                        model: modelName,
-                        contents: [{ parts: [
-                            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-                            { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
-                        ]}]
-                    });
+            try {
+                const result = await client.models.generateContent({
+                    model: MODEL_NAME,
+                    contents: [{ parts: [
+                        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+                        { text: "Hãy trích xuất chính xác biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ ghi chú hay văn bản nào khác. Nếu không tìm thấy, trả về 'NOT_FOUND'." }
+                    ]}]
+                });
 
-                    let text = (result.text || '').trim();
-                    text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
-                    plateResult = text;
-                    console.log(`[ScanPlate] Thành công với Key #${i + 1} và Model ${modelName}: "${text}"`);
-                    break;
-                } catch (modelErr) {
-                    console.warn(`[ScanPlate] Key #${i + 1} với model ${modelName} thất bại:`, modelErr.message);
-                    lastError = modelErr;
-                    if (modelErr.message && (modelErr.message.includes('429') || modelErr.message.includes('Quota') || modelErr.message.includes('RESOURCE_EXHAUSTED'))) {
-                        console.warn(`[ScanPlate] Key #${i + 1} hết hạn ngạch / rate limit, chuyển sang Key tiếp theo.`);
-                        break;
-                    }
-                }
-            }
-
-            if (plateResult !== null) {
+                let text = (result.text || '').trim();
+                text = text.replace(/```[a-zA-Z]*\n?|\n?```/g, '').trim();
+                plateResult = text;
+                console.log(`[ScanPlate] Nhận diện thành công với Key #${i + 1} (${MODEL_NAME}): "${text}"`);
                 break;
+            } catch (err) {
+                console.warn(`[ScanPlate] Key #${i + 1} gặp lỗi:`, err.message);
+                lastError = err;
+                // Nếu lỗi hạn ngạch hoặc lỗi API, thử tiếp key tiếp theo
+                continue;
             }
         }
 
