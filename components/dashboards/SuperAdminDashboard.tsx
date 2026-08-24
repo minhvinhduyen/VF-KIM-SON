@@ -23,6 +23,7 @@ interface BranchSummary {
   appointmentJobCount: number;
   uniqueJobCount: number;
   appointmentRate: number;
+  quotationPendingCount?: number;
 }
 
 interface SlaViolation {
@@ -46,6 +47,7 @@ interface OverviewData {
   totalVehiclesInWorkshop: number;
   totalOnTimeRate: number;
   totalAppointmentRate: number;
+  totalQuotationPending?: number;
   branchSummaries: BranchSummary[];
   slaViolations: SlaViolation[];
 }
@@ -316,8 +318,8 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* 6 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
         {/* Doanh thu */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-2xl p-4 shadow-lg hover:scale-[1.02] transition-transform">
           <div className="flex justify-between items-start">
@@ -382,6 +384,17 @@ const SuperAdminDashboard: React.FC = () => {
               <p className="text-teal-200 text-[10px] mt-1">Hoàn thành đúng giờ</p>
             </div>
             <span className="text-2xl">✅</span>
+          </div>
+        </div>
+        {/* Báo giá chờ */}
+        <div className="bg-gradient-to-br from-amber-500 to-amber-700 text-white rounded-2xl p-4 shadow-lg hover:scale-[1.02] transition-transform col-span-2 sm:col-span-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-amber-100 text-xs font-semibold tracking-wider uppercase">BG chờ xử lý</p>
+              <p className="text-2xl font-extrabold mt-1">{overviewData?.totalQuotationPending ?? 0}</p>
+              <p className="text-amber-200 text-[10px] mt-1">Cần follow-up</p>
+            </div>
+            <span className="text-2xl">📝</span>
           </div>
         </div>
       </div>
@@ -449,6 +462,7 @@ const SuperAdminDashboard: React.FC = () => {
                   <th className="py-3 px-3 text-center">Hẹn</th>
                   <th className="py-3 px-3 text-center">TL Hẹn</th>
                   <th className="py-3 px-3 text-center">Đúng hẹn</th>
+                  <th className="py-3 px-3 text-center">BG Chờ</th>
                   <th className="py-3 px-3 text-center">Khoang</th>
                   <th className="py-3 px-3 text-center"></th>
                 </tr>
@@ -478,6 +492,9 @@ const SuperAdminDashboard: React.FC = () => {
                     </td>
                     <td className="py-3 px-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold border ${b.onTimeRate >= 80 ? 'bg-green-50 text-green-700 border-green-100' : b.onTimeRate >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 'bg-red-50 text-red-700 border-red-100'}`}>{b.onTimeRate}%</span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-xs font-extrabold border border-amber-100">{b.quotationPendingCount ?? 0}</span>
                     </td>
                     <td className="py-3 px-3 text-center text-gray-500 font-bold text-xs">{b.baysCount}</td>
                     <td className="py-3 px-3 text-center">

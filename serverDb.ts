@@ -559,3 +559,134 @@ export const getFacilitiesList = (): any[] => {
             type: configs[key].type
         }));
 };
+
+// === Quotation Follow-up DB Helpers ===
+
+export const initQuotationFollowupsTable = async (facilityId: string) => {
+    try {
+        const pool = getPool(facilityId);
+        if (!pool) return;
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`quotation_followups\` (
+                \`id\` VARCHAR(50) PRIMARY KEY,
+                \`originalJobId\` VARCHAR(50) NOT NULL,
+                \`licensePlate\` VARCHAR(20) NOT NULL,
+                \`customerName\` VARCHAR(100) NOT NULL,
+                \`customerPhone\` VARCHAR(20),
+                \`carModel\` VARCHAR(50) NOT NULL,
+                \`vin\` VARCHAR(50),
+                \`jobType\` VARCHAR(50) NOT NULL,
+                \`advisorName\` VARCHAR(100) NOT NULL,
+                \`advisorId\` VARCHAR(50) NOT NULL,
+                \`km\` INT,
+                \`quotationDate\` DATETIME NOT NULL,
+                \`followupStatus\` VARCHAR(50) NOT NULL DEFAULT 'Chờ duyệt',
+                \`appointmentJobId\` VARCHAR(50),
+                \`notes\` TEXT,
+                \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+    } catch (e: any) {
+        console.error(`[serverDb] Error initializing quotation_followups table for ${facilityId}:`, e.message);
+    }
+};
+
+export const getQuotationFollowups = async (facilityId: string, advisorId?: string) => {
+    await initQuotationFollowupsTable(facilityId);
+    try {
+        const pool = getPool(facilityId);
+        if (!pool) return [];
+        let query = 'SELECT * FROM `quotation_followups`';
+        const params: any[] = [];
+        if (advisorId) {
+            query += ' WHERE `advisorId` = ?';
+            params.push(advisorId);
+        }
+        query += ' ORDER BY `quotationDate` DESC';
+        const [rows]: any = await pool.query(query, params);
+        return rows || [];
+    } catch (e: any) {
+        console.error(`[serverDb] Error fetching quotation followups for ${facilityId}:`, e.message);
+        return [];
+    }
+};
+
+export const createQuotationFollowup = async (facilityId: string, data: any) => {
+    await initQuotationFollowupsTable(facilityId);
+    try {
+        const pool = getPool(facilityId);
+        if (!pool) throw new Error('Không thể kết nối cơ sở dữ liệu.');
+        const id = data.id || ('qf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+        const quotationDate = data.quotationDate || new Date();
+        const followupStatus = data.followupStatus || 'Chờ duyệt';
+        await pool.query(
+            `INSERT INTO \`quotation_followups\` 
+            (\`id\`, \`originalJobId\`, \`licensePlate\`, \`customerName\`, \`customerPhone\`, \`carModel\`, \`vin\`, \`jobType\`, \`advisorName\`, \`advisorId\`, \`km\`, \`quotationDate\`, \`followupStatus\`, \`notes\`)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id,
+                data.originalJobId || '',
+                data.licensePlate || '',
+                data.customerName || '',
+                data.customerPhone || null,
+                data.carModel || '',
+                data.vin || null,
+                data.jobType || '',
+                data.advisorName || '',
+                data.advisorId || '',
+                data.km || 0,
+                quotationDate,
+                followupStatus,
+                data.notes || null,
+            ]
+        );
+        return { id, ...data, quotationDate, followupStatus };
+    } catch (e: any) {
+        console.error(`[serverDb] Error creating quotation followup for ${facilityId}:`, e.message);
+        throw e;
+    }
+};
+
+export const updateQuotationFollowup = async (facilityId: string, id: string, data: any) => {
+    await initQuotationFollowupsTable(facilityId);
+    try {
+        const pool = getPool(facilityId);
+        if (!pool) throw new Error('Không thể kết nối cơ sở dữ liệu.');
+        const fields: string[] = [];
+        const values: any[] = [];
+        if (data.followupStatus !== undefined) {
+            fields.push('`followupStatus` = ?');
+            values.push(data.followupStatus);
+        }
+        if (data.notes !== undefined) {
+            fields.push('`notes` = ?');
+            values.push(data.notes);
+        }
+        if (data.appointmentJobId !== undefined) {
+            fields.push('`appointmentJobId` = ?');
+            values.push(data.appointmentJobId);
+        }
+        if (fields.length === 0) return { success: true };
+        values.push(id);
+        await pool.query(`UPDATE \`quotation_followups\` SET ${fields.join(', ')} WHERE \`id\` = ?`, values);
+        return { success: true };
+    } catch (e: any) {
+        console.error(`[serverDb] Error updating quotation followup ${id}:`, e.message);
+        throw e;
+    }
+};
+
+export const deleteQuotationFollowup = async (facilityId: string, id: string) => {
+    await initQuotationFollowupsTable(facilityId);
+    try {
+        const pool = getPool(facilityId);
+        if (!pool) throw new Error('Không thể kết nối cơ sở dữ liệu.');
+        await pool.query('DELETE FROM `quotation_followups` WHERE `id` = ?', [id]);
+        return { success: true };
+    } catch (e: any) {
+        console.error(`[serverDb] Error deleting quotation followup ${id}:`, e.message);
+        throw e;
+    }
+};
+

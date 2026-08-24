@@ -130,3 +130,30 @@ export const CAR_MODELS = [
     "Minio Green", "VF3", "VF34", "Nerio Green", "VF5", "Herio Green", 
     "Limo Green", "MPV 7", "VF6", "VF7", "VF8", "VF9", "Khác"
 ];
+
+// === Quotation Follow-up Tracking ===
+export enum QuotationFollowupStatus {
+  Pending = 'Chờ duyệt',
+  Approved = 'Đã duyệt',
+  Scheduled = 'Đã đặt hẹn',
+}
+
+export interface QuotationFollowup {
+  id: string;
+  originalJobId: string;
+  licensePlate: string;
+  customerName: string;
+  customerPhone?: string;
+  carModel: string;
+  vin?: string;
+  jobType: string;
+  advisorName: string;
+  advisorId: string;
+  km?: number;
+  quotationDate: Date;
+  followupStatus: QuotationFollowupStatus;
+  appointmentJobId?: string;
+  notes?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}

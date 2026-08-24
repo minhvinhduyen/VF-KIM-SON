@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import type { Job } from '../../types';
 import { JobType, JobStatus, CAR_MODELS } from '../../types';
 import { getFacilityById } from '../../services/facilitiesConfig';
+import * as apiService from '../../services/apiService';
 
 interface GatePassModalProps {
   onClose: () => void;
@@ -106,6 +107,29 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
         });
 
         await Promise.all(updatePromises);
+
+        // === Auto-create quotation followup khi chọn "Báo giá" ===
+        if (formData.status === JobStatus.Quotation) {
+            try {
+                await apiService.createQuotationFollowup({
+                    originalJobId: selectedJobId,
+                    licensePlate: formData.licensePlate,
+                    customerName: formData.customerName,
+                    customerPhone: formData.customerPhone,
+                    carModel: formData.carModel,
+                    vin: primaryJob.vin || '',
+                    jobType: formData.jobType,
+                    advisorName: formData.advisorName,
+                    advisorId: user?.id || '',
+                    km: typeof formData.km === 'number' ? formData.km : 0,
+                });
+                console.log('[GatePass] Đã tạo bản ghi theo dõi báo giá cho xe:', formData.licensePlate);
+            } catch (followupErr) {
+                // Không block luồng in giấy ra cổng nếu tạo followup thất bại
+                console.error('[GatePass] Lỗi tạo theo dõi báo giá:', followupErr);
+            }
+        }
+
         setShowPrintPreview(true); // Chuyển sang màn hình in
     } catch (err) {
         setError((err as Error).message);

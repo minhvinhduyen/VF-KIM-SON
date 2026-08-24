@@ -18,6 +18,8 @@ import VehicleArrival from '../common/VehicleArrival';
 import Settings from '../management/Settings';
 import VehiclesInWorkshop from '../common/VehiclesInWorkshop';
 import PausedJobsList from '../common/PausedJobsList';
+import QuotationFollowupList from '../management/QuotationFollowupList';
+import type { QuotationFollowup } from '../../types';
 
 import ManagerOverview from './ManagerOverview';
 
@@ -182,6 +184,24 @@ const ManagerDashboard: React.FC = () => {
         setFormMode(null);
     }
 
+    const handleCreateAppointmentFromQuotation = (followup: QuotationFollowup) => {
+        setSelectedJob(null);
+        setInitialJobData({
+            licensePlate: followup.licensePlate,
+            customerName: followup.customerName,
+            customerPhone: followup.customerPhone || '',
+            carModel: followup.carModel,
+            vin: followup.vin || '',
+            jobType: followup.jobType as any,
+            advisorName: followup.advisorName,
+            km: followup.km || 0,
+            status: JobStatus.Appointment,
+            isAppointment: true,
+        });
+        setFormMode('appointment');
+        setIsJobFormOpen(true);
+    };
+
     const renderGeneralRepairView = () => {
         const timelineView = (
             <>
@@ -281,6 +301,8 @@ const ManagerDashboard: React.FC = () => {
                     !state.jobs.some(cont => cont.continuationOfJobId === j.id)
                 );
                 return <PausedJobsList jobs={pausedJobs} showResumeButton={false} />;
+            case 'quotation_followup':
+                return <QuotationFollowupList onCreateAppointment={handleCreateAppointmentFromQuotation} />;
             default:
                 return null;
         }
@@ -323,6 +345,7 @@ const ManagerDashboard: React.FC = () => {
                         { name: 'appointments', label: 'Lịch hẹn' },
                         { name: 'paused_jobs', label: 'Xe dừng CV' },
                         { name: 'vehicles_in_workshop', label: 'Xe đang ở xưởng' },
+                        { name: 'quotation_followup', label: '📝 Báo giá chờ' },
                     ]} />
 
                     {/* Nhóm 3: Hệ thống */}

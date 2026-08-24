@@ -261,3 +261,55 @@ export const changeMyPassword = async (data: { username: string; currentPassword
     });
     return handleResponse(res);
 };
+
+// === Quotation Follow-up APIs ===
+
+export const fetchQuotationFollowups = async (advisorId?: string) => {
+    const url = advisorId
+        ? withFacility(`/api/quotation-followups?advisorId=${encodeURIComponent(advisorId)}`)
+        : withFacility('/api/quotation-followups');
+    const res = await fetch(url, { headers: getHeaders() });
+    return handleResponse(res);
+};
+
+export const createQuotationFollowup = async (data: {
+    originalJobId: string;
+    licensePlate: string;
+    customerName: string;
+    customerPhone?: string;
+    carModel: string;
+    vin?: string;
+    jobType: string;
+    advisorName: string;
+    advisorId: string;
+    km?: number;
+    notes?: string;
+}) => {
+    const res = await fetch(withFacility('/api/quotation-followups'), {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const updateQuotationFollowup = async (id: string, data: {
+    followupStatus?: string;
+    notes?: string;
+    appointmentJobId?: string;
+}) => {
+    const res = await fetch(withFacility(`/api/quotation-followups/${id}`), {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+};
+
+export const deleteQuotationFollowup = async (id: string) => {
+    const res = await fetch(withFacility(`/api/quotation-followups/${id}`), {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+    return handleResponse(res);
+};

@@ -6,6 +6,7 @@ import Timeline from '../common/Timeline';
 import BodyShopCalendar from '../common/BodyShopCalendar';
 import JobForm from '../forms/JobForm';
 import { BayType, JobType, Job, JobStatus } from '../../types';
+import type { QuotationFollowup } from '../../types';
 import TimelineFilter from '../common/TimelineFilter';
 import { useJobFilter } from '../../hooks/useJobFilter';
 import AppointmentSchedule from '../common/AppointmentSchedule';
@@ -15,6 +16,7 @@ import GatePassModal from '../modals/GatePassModal';
 import VehiclesInWorkshop from '../common/VehiclesInWorkshop';
 import { useSlaMonitor } from '../../hooks/useSlaMonitor';
 import SlaAlertModal from '../modals/SlaAlertModal';
+import QuotationFollowupList from '../management/QuotationFollowupList';
 
 const ServiceAdvisorDashboard: React.FC = () => {
   const { state, dispatch, updateJob } = useApp();
@@ -103,6 +105,25 @@ const ServiceAdvisorDashboard: React.FC = () => {
     setInitialJobData(null);
     setFormMode(null);
   }
+
+  // Tạo lịch hẹn từ danh sách báo giá (pre-fill thông tin xe)
+  const handleCreateAppointmentFromQuotation = (followup: QuotationFollowup) => {
+    setSelectedJob(null);
+    setInitialJobData({
+      licensePlate: followup.licensePlate,
+      customerName: followup.customerName,
+      customerPhone: followup.customerPhone || '',
+      carModel: followup.carModel,
+      vin: followup.vin || '',
+      jobType: followup.jobType as any,
+      advisorName: followup.advisorName,
+      km: followup.km || 0,
+      status: JobStatus.Appointment,
+      isAppointment: true,
+    });
+    setFormMode('appointment');
+    setIsJobFormOpen(true);
+  };
 
   const TabButton: React.FC<{tabName: string; label: string}> = ({ tabName, label }) => (
     <button
@@ -241,6 +262,7 @@ const ServiceAdvisorDashboard: React.FC = () => {
             <TabButton tabName="body_shop" label="Đồng sơn" />
             <TabButton tabName="appointments" label="Lịch hẹn" />
             <TabButton tabName="vehicles_in_workshop" label="Xe đang ở xưởng" />
+            <TabButton tabName="quotation_followup" label="📝 Báo giá chờ" />
          </div>
          
             {activeTab === 'general_repair' && renderGeneralRepairView()}
@@ -258,6 +280,14 @@ const ServiceAdvisorDashboard: React.FC = () => {
             {activeTab === 'vehicles_in_workshop' && (
               <div className="p-4 bg-white rounded-b-lg rounded-r-lg border border-t-0 border-gray-300">
                 <VehiclesInWorkshop />
+              </div>
+            )}
+            {activeTab === 'quotation_followup' && (
+              <div className="p-4 bg-white rounded-b-lg rounded-r-lg border border-t-0 border-gray-300">
+                <QuotationFollowupList 
+                  advisorId={user?.id}
+                  onCreateAppointment={handleCreateAppointmentFromQuotation}
+                />
               </div>
             )}
        </div>

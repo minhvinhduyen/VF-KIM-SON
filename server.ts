@@ -320,6 +320,49 @@ async function startServer() {
     }
   });
 
+  // === Quotation Follow-ups API routes ===
+  app.get('/api/quotation-followups', async (req, res) => {
+    try {
+      const facilityId = (req as any).facilityId;
+      const advisorId = req.query.advisorId as string | undefined;
+      const followups = await db.getQuotationFollowups(facilityId, advisorId);
+      res.set('Cache-Control', 'no-store');
+      res.json(followups);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/quotation-followups', async (req, res) => {
+    try {
+      const facilityId = (req as any).facilityId;
+      const result = await db.createQuotationFollowup(facilityId, req.body);
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/quotation-followups/:id', async (req, res) => {
+    try {
+      const facilityId = (req as any).facilityId;
+      const result = await db.updateQuotationFollowup(facilityId, req.params.id, req.body);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/quotation-followups/:id', async (req, res) => {
+    try {
+      const facilityId = (req as any).facilityId;
+      const result = await db.deleteQuotationFollowup(facilityId, req.params.id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Bays CRUD
   app.post('/api/bays', async (req, res) => {
     try {

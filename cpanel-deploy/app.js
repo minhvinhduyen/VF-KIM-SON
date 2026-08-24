@@ -210,6 +210,37 @@ const initSuperAdminsTable = async () => {
     }
 };
 
+const initQuotationFollowupsTable = async (facilityId) => {
+    try {
+        const c = getFacilityConfig(facilityId);
+        if (!c) return;
+        const pool = getMysqlPool(facilityId, c.mysql);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`quotation_followups\` (
+                \`id\` VARCHAR(50) PRIMARY KEY,
+                \`originalJobId\` VARCHAR(50) NOT NULL,
+                \`licensePlate\` VARCHAR(20) NOT NULL,
+                \`customerName\` VARCHAR(100) NOT NULL,
+                \`customerPhone\` VARCHAR(20),
+                \`carModel\` VARCHAR(50) NOT NULL,
+                \`vin\` VARCHAR(50),
+                \`jobType\` VARCHAR(50) NOT NULL,
+                \`advisorName\` VARCHAR(100) NOT NULL,
+                \`advisorId\` VARCHAR(50) NOT NULL,
+                \`km\` INT,
+                \`quotationDate\` DATETIME NOT NULL,
+                \`followupStatus\` VARCHAR(50) NOT NULL DEFAULT 'Chờ duyệt',
+                \`appointmentJobId\` VARCHAR(50),
+                \`notes\` TEXT,
+                \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+    } catch (e) {
+        console.error(`[QuotationFollowups] Error initializing table for facility ${facilityId}:`, e.message);
+    }
+};
+
 const getSuperAdmin = async (identifier) => {
     loadEnvFile();
     await initSuperAdminsTable();
@@ -382,9 +413,142 @@ app.get(['/api/vehicles', '/vf-api/api/vehicles'], async (req, res) => {
 });
 
 // Jobs CRUD
-app.post(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => { try { res.json(await dbInsert(req.facilityId, 'jobs', req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
-app.put(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => { try { res.json(await dbUpdate(req.facilityId, 'jobs', req.body.id, req.body)); } catch(e) { res.status(500).json({error:e.message}); }});
+app.post(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => {
+    try {
+        const newJob = await dbInsert(req.facilityId, 'jobs', req.body);
+        
+        if (newJob.isAppointment === true || newJob.isAppointment === 'true' || newJob.status === 'Hẹn') {
+            await initQuotationFollowupsTable(req.facilityId);
+            const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+            const [followups] = await pool.query(
+                `SELECT id FROM \`quotation_followups\` WHERE \`licensePlate\` = ? AND \`followupStatus\` != 'Đã đặt hẹn'`,
+                [newJob.licensePlate]
+            );
+            if (followups.length > 0) {
+                const qfId = followups[0].id;
+                await pool.query(
+                    `UPDATE \`quotation_followups\` SET \`followupStatus\` = 'Đã đặt hẹn', \`appointmentJobId\` = ? WHERE \`id\` = ?`,
+                    [newJob.id, qfId]
+                );
+            }
+        }
+        
+        res.json(newJob);
+    } catch(e) {
+        res.status(500).json({error:e.message});
+    }
+});
+
+app.put(['/api/jobs', '/vf-api/api/jobs'], async (req, res) => {
+    try {
+        const updatedJob = await dbUpdate(req.facilityId, 'jobs', req.body.id, req.body);
+        
+        if (req.body.status === 'Đã ra cổng') {
+            await initQuotationFollowupsTable(req.facilityId);
+            const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+            await pool.query(
+                `DELETE FROM \`quotation_followups\` WHERE \`appointmentJobId\` = ?`,
+                [req.body.id]
+            );
+        }
+        
+        res.json(updatedJob);
+    } catch(e) {
+        res.status(500).json({error:e.message});
+    }
+});
+
 app.delete(['/api/jobs/:id', '/vf-api/api/jobs/:id'], async (req, res) => { try { await dbDelete(req.facilityId, 'jobs', req.params.id); res.json({success:true}); } catch(e) { res.status(500).json({error:e.message}); }});
+
+// Quotation Followups CRUD
+app.get(['/api/quotation-followups', '/vf-api/api/quotation-followups'], async (req, res) => {
+    try {
+        res.setHeader('Cache-Control', 'no-store');
+        await initQuotationFollowupsTable(req.facilityId);
+        const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+        let query = `SELECT * FROM \`quotation_followups\``;
+        const params = [];
+        if (req.query.advisorId) {
+            query += ` WHERE \`advisorId\` = ?`;
+            params.push(req.query.advisorId);
+        }
+        query += ` ORDER BY \`quotationDate\` DESC`;
+        const [rows] = await pool.query(query, params);
+        res.json(rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post(['/api/quotation-followups', '/vf-api/api/quotation-followups'], async (req, res) => {
+    try {
+        await initQuotationFollowupsTable(req.facilityId);
+        const newRecord = {
+            id: 'qf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            originalJobId: req.body.originalJobId,
+            licensePlate: req.body.licensePlate,
+            customerName: req.body.customerName,
+            customerPhone: req.body.customerPhone || null,
+            carModel: req.body.carModel,
+            vin: req.body.vin || null,
+            jobType: req.body.jobType,
+            advisorName: req.body.advisorName,
+            advisorId: req.body.advisorId,
+            km: req.body.km || null,
+            quotationDate: new Date(),
+            followupStatus: 'Chờ duyệt',
+            notes: req.body.notes || null
+        };
+        const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+        const keys = Object.keys(newRecord);
+        await pool.query(
+            `INSERT INTO \`quotation_followups\` (${keys.map(k => `\`${k}\``).join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
+            Object.values(newRecord)
+        );
+        res.json(newRecord);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put(['/api/quotation-followups/:id', '/vf-api/api/quotation-followups/:id'], async (req, res) => {
+    try {
+        await initQuotationFollowupsTable(req.facilityId);
+        const updates = [];
+        const params = [];
+        if (req.body.followupStatus !== undefined) {
+            updates.push(`\`followupStatus\` = ?`);
+            params.push(req.body.followupStatus);
+        }
+        if (req.body.notes !== undefined) {
+            updates.push(`\`notes\` = ?`);
+            params.push(req.body.notes);
+        }
+        if (req.body.appointmentJobId !== undefined) {
+            updates.push(`\`appointmentJobId\` = ?`);
+            params.push(req.body.appointmentJobId);
+        }
+        if (updates.length > 0) {
+            params.push(req.params.id);
+            const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+            await pool.query(`UPDATE \`quotation_followups\` SET ${updates.join(', ')} WHERE \`id\` = ?`, params);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete(['/api/quotation-followups/:id', '/vf-api/api/quotation-followups/:id'], async (req, res) => {
+    try {
+        await initQuotationFollowupsTable(req.facilityId);
+        const pool = getMysqlPool(req.facilityId, getFacilityConfig(req.facilityId).mysql);
+        await pool.query(`DELETE FROM \`quotation_followups\` WHERE \`id\` = ?`, [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // Users CRUD
 app.post(['/api/users', '/vf-api/api/users'], async (req, res) => {
@@ -618,17 +782,22 @@ app.get(['/api/super-admin/overview', '/vf-api/api/super-admin/overview'], async
     try {
         const list = getFacilitiesList();
         const branchSummaries = [];
-        let totalActiveJobs=0,totalWaitingJobs=0,totalAppointments=0,totalBays=0,totalRevenue=0,totalVehicleVisits=0,totalVehiclesInWorkshop=0,totalOnTimeJobs=0,totalCompletedJobs=0,totalAppointmentJobs=0,totalNonAppointmentJobs=0;
+        let totalActiveJobs=0,totalWaitingJobs=0,totalAppointments=0,totalBays=0,totalRevenue=0,totalVehicleVisits=0,totalVehiclesInWorkshop=0,totalOnTimeJobs=0,totalCompletedJobs=0,totalAppointmentJobs=0,totalNonAppointmentJobs=0,totalQuotationPending=0;
         const fromDate = req.query.from ? new Date(req.query.from + 'T00:00:00') : null;
         const toDate = req.query.to ? new Date(req.query.to + 'T23:59:59') : null;
         for (const facility of list) {
             try {
                 const [jobs, bays] = await Promise.all([dbGetAll(facility.id, 'jobs'), dbGetAll(facility.id, 'bays')]);
+                await initQuotationFollowupsTable(facility.id);
+                const pool = getMysqlPool(facility.id, getFacilityConfig(facility.id).mysql);
+                const [qfRows] = await pool.query(`SELECT COUNT(*) as count FROM \`quotation_followups\` WHERE \`followupStatus\` = 'Chờ duyệt'`);
+                const quotationPendingCount = qfRows[0].count || 0;
+                
                 const activeJobs = jobs.filter(j=>j.status==='Đang làm');
                 const waitingJobs = jobs.filter(j=>['Chờ sửa chữa','Chờ tiếp nhận','Đã mở phiếu'].includes(j.status));
                 const appointmentsToday = jobs.filter(j=>j.status==='Hẹn');
                 const vehiclesInWorkshop = jobs.filter(j=>['Đang làm','Chờ sửa chữa','Dừng sửa chữa','Đã mở phiếu','Chờ tiếp nhận','Rửa xe'].includes(j.status));
-                totalActiveJobs+=activeJobs.length; totalWaitingJobs+=waitingJobs.length; totalAppointments+=appointmentsToday.length; totalBays+=bays.length; totalVehiclesInWorkshop+=vehiclesInWorkshop.length;
+                totalActiveJobs+=activeJobs.length; totalWaitingJobs+=waitingJobs.length; totalAppointments+=appointmentsToday.length; totalBays+=bays.length; totalVehiclesInWorkshop+=vehiclesInWorkshop.length; totalQuotationPending+=quotationPendingCount;
                 const periodJobs = jobs.filter(j => { if(!j.plannedStartTime)return false; const d=new Date(j.plannedStartTime); if(fromDate&&d<fromDate)return false; if(toDate&&d>toDate)return false; return true; });
                 const vehicleVisits = periodJobs.filter(j=>!j.continuationOfJobId&&j.status!=='Hẹn'&&j.status!=='Bỏ hẹn').length;
                 let branchRevenue = 0;
@@ -638,10 +807,10 @@ app.get(['/api/super-admin/overview', '/vf-api/api/super-admin/overview'], async
                 const appointmentJobsInPeriod = periodJobs.filter(j=>j.isAppointment&&!j.continuationOfJobId);
                 const allUniqueJobsInPeriod = periodJobs.filter(j=>!j.continuationOfJobId&&j.status!=='Hẹn'&&j.status!=='Bỏ hẹn');
                 totalRevenue+=branchRevenue; totalVehicleVisits+=vehicleVisits; totalOnTimeJobs+=onTimeInPeriod.length; totalCompletedJobs+=completedInPeriod.length; totalAppointmentJobs+=appointmentJobsInPeriod.length; totalNonAppointmentJobs+=allUniqueJobsInPeriod.length;
-                branchSummaries.push({ facilityId:facility.id, facilityName:facility.name, activeCount:activeJobs.length, waitingCount:waitingJobs.length, appointmentCount:appointmentsToday.length, totalJobs:jobs.length, baysCount:bays.length, revenue:branchRevenue, vehicleVisits, vehiclesInWorkshop:vehiclesInWorkshop.length, completedCount:completedInPeriod.length, onTimeCount:onTimeInPeriod.length, onTimeRate:completedInPeriod.length>0?Math.round((onTimeInPeriod.length/completedInPeriod.length)*100):0, appointmentJobCount:appointmentJobsInPeriod.length, uniqueJobCount:allUniqueJobsInPeriod.length, appointmentRate:allUniqueJobsInPeriod.length>0?Math.round((appointmentJobsInPeriod.length/allUniqueJobsInPeriod.length)*100):0 });
+                branchSummaries.push({ facilityId:facility.id, facilityName:facility.name, activeCount:activeJobs.length, waitingCount:waitingJobs.length, appointmentCount:appointmentsToday.length, totalJobs:jobs.length, baysCount:bays.length, revenue:branchRevenue, vehicleVisits, vehiclesInWorkshop:vehiclesInWorkshop.length, completedCount:completedInPeriod.length, onTimeCount:onTimeInPeriod.length, onTimeRate:completedInPeriod.length>0?Math.round((onTimeInPeriod.length/completedInPeriod.length)*100):0, appointmentJobCount:appointmentJobsInPeriod.length, uniqueJobCount:allUniqueJobsInPeriod.length, appointmentRate:allUniqueJobsInPeriod.length>0?Math.round((appointmentJobsInPeriod.length/allUniqueJobsInPeriod.length)*100):0, quotationPendingCount });
             } catch(e) { console.error(`Error ${facility.id}:`, e); }
         }
-        res.json({ totalActiveJobs, totalWaitingJobs, totalAppointments, totalBays, totalRevenue, totalVehicleVisits, totalVehiclesInWorkshop, totalOnTimeRate:totalCompletedJobs>0?Math.round((totalOnTimeJobs/totalCompletedJobs)*100):0, totalAppointmentRate:totalNonAppointmentJobs>0?Math.round((totalAppointmentJobs/totalNonAppointmentJobs)*100):0, branchSummaries, slaViolations:[] });
+        res.json({ totalActiveJobs, totalWaitingJobs, totalAppointments, totalBays, totalRevenue, totalVehicleVisits, totalVehiclesInWorkshop, totalOnTimeRate:totalCompletedJobs>0?Math.round((totalOnTimeJobs/totalCompletedJobs)*100):0, totalAppointmentRate:totalNonAppointmentJobs>0?Math.round((totalAppointmentJobs/totalNonAppointmentJobs)*100):0, totalQuotationPending, branchSummaries, slaViolations:[] });
     } catch(e) { res.status(500).json({error:e.message}); }
 });
 

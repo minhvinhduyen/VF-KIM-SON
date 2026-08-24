@@ -13,6 +13,7 @@ import BodyShopCalendar from '../common/BodyShopCalendar';
 import UIOImportModal from '../modals/UIOImportModal';
 import VehiclesInWorkshop from '../common/VehiclesInWorkshop';
 import ReportGenerator from '../management/ReportGenerator';
+import QuotationFollowupList from '../management/QuotationFollowupList';
 
 const CustomerCareDashboard: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -198,6 +199,7 @@ const CustomerCareDashboard: React.FC = () => {
             <TabButton tabName="bodyshop" label="Đồng sơn" />
             <TabButton tabName="appointments" label="Lịch hẹn" />
             <TabButton tabName="vehicles_in_workshop" label="Xe đang ở xưởng" />
+            <TabButton tabName="quotation_followup" label="📝 Báo giá chờ" />
             <TabButton tabName="reports" label="Báo cáo" />
         </div>
         <div>
@@ -219,6 +221,11 @@ const CustomerCareDashboard: React.FC = () => {
             {activeTab === 'vehicles_in_workshop' && (
                 <div className="p-4 bg-white rounded-b-lg rounded-r-lg border border-t-0 border-gray-300">
                     <VehiclesInWorkshop />
+                </div>
+            )}
+            {activeTab === 'quotation_followup' && (
+                <div className="p-4 bg-white rounded-b-lg rounded-r-lg border border-t-0 border-gray-300">
+                    <QuotationFollowupList readOnly={true} />
                 </div>
             )}
             {activeTab === 'reports' && (
