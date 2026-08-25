@@ -276,7 +276,7 @@ const ManagerDashboard: React.FC = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'overview':
-                return <ManagerOverview />;
+                return <ManagerOverview onNavigateTab={setActiveTab} />;
             case 'general_repair':
                 return renderGeneralRepairView();
             case 'vehicle_arrival':

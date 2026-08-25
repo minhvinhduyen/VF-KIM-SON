@@ -1,20 +1,43 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../hooks/useApp';
-import { Job, JobStatus, JobType } from '../../types';
+import { Job, JobStatus, JobType, QuotationFollowup, QuotationFollowupStatus } from '../../types';
+import * as apiService from '../../services/apiService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { AlertCircle, Clock, CheckCircle2, TrendingUp, Calendar, Filter } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle2, TrendingUp, Calendar, Filter, FileText } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 type TimeRange = 'today' | 'week' | 'month' | 'all';
 
-const ManagerOverview: React.FC = () => {
+interface ManagerOverviewProps {
+  onNavigateTab?: (tabName: string) => void;
+}
+
+const ManagerOverview: React.FC<ManagerOverviewProps> = ({ onNavigateTab }) => {
   const { state } = useApp();
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
+  const [quotationFollowups, setQuotationFollowups] = useState<QuotationFollowup[]>([]);
+
+  useEffect(() => {
+    const loadFollowups = async () => {
+      try {
+        const list = await apiService.fetchQuotationFollowups();
+        setQuotationFollowups(list || []);
+      } catch (e) {
+        console.error('Lỗi tải danh sách báo giá:', e);
+      }
+    };
+    loadFollowups();
+    const interval = setInterval(loadFollowups, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const totalQuotations = quotationFollowups.length;
+  const pendingQuotations = quotationFollowups.filter(q => q.followupStatus === QuotationFollowupStatus.Pending).length;
 
   // Helper to determine if a date is within the selected range
   const isInRange = (date: Date) => {
@@ -133,42 +156,69 @@ const ManagerOverview: React.FC = () => {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
           <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
             <Calendar size={24} />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium font-sans">Tổng lượt xe</p>
-            <h3 className="text-2xl font-bold text-gray-900">{totalJobs}</h3>
+            <p className="text-xs text-gray-500 font-medium font-sans">Tổng lượt xe</p>
+            <h3 className="text-xl font-bold text-gray-900">{totalJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
           <div className="p-3 bg-green-50 rounded-lg text-green-600">
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium font-sans">Hoàn thành</p>
-            <h3 className="text-2xl font-bold text-gray-900">{completedJobs}</h3>
+            <p className="text-xs text-gray-500 font-medium font-sans">Hoàn thành</p>
+            <h3 className="text-xl font-bold text-gray-900">{completedJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
           <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
             <Clock size={24} />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium font-sans">Đang sửa chữa</p>
-            <h3 className="text-2xl font-bold text-gray-900">{inProgressJobs}</h3>
+            <p className="text-xs text-gray-500 font-medium font-sans">Đang sửa chữa</p>
+            <h3 className="text-xl font-bold text-gray-900">{inProgressJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
           <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
             <TrendingUp size={24} />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium font-sans">Doanh thu dự kiến</p>
-            <h3 className="text-2xl font-bold text-gray-900">{revenue.toLocaleString()}đ</h3>
+            <p className="text-xs text-gray-500 font-medium font-sans">Doanh thu dự kiến</p>
+            <h3 className="text-xl font-bold text-gray-900">{revenue.toLocaleString()}đ</h3>
           </div>
+        </div>
+
+        {/* Card Xe báo giá chờ - Clickable */}
+        <div 
+          onClick={() => onNavigateTab && onNavigateTab('quotation_followup')}
+          className="bg-white p-5 rounded-xl border border-amber-200 hover:border-amber-400 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group hover:scale-[1.02]"
+          title="Bấm để xem danh sách chi tiết xe báo giá chờ"
+        >
+          <div className="flex items-center space-x-3.5">
+            <div className="p-3 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-100 transition-colors">
+              <FileText size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium font-sans">Xe báo giá chờ</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <h3 className="text-xl font-bold text-amber-700">{totalQuotations}</h3>
+                {pendingQuotations > 0 && (
+                  <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">
+                    {pendingQuotations} chờ
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <span className="text-amber-500 text-sm font-bold group-hover:translate-x-1 transition-transform">
+            &rarr;
+          </span>
         </div>
       </div>
 
