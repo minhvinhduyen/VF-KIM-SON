@@ -42,10 +42,11 @@ export enum BayType {
 
 export interface Bay {
   id: string;
-  name:string;
+  name: string;
   type: BayType;
   technician?: string;
   supportsLift: boolean;
+  orderIndex?: number;
 }
 
 export enum JobType {

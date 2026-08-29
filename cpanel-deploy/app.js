@@ -91,9 +91,24 @@ const formatToDb = (table, data) => {
 // === DB OPERATIONS ===
 const getFacilityConfig = (fId) => { loadConfigs(); return configs[fId]; };
 
+const initBaysTable = async (fId) => {
+    try {
+        const c = getFacilityConfig(fId); if (!c) return;
+        const pool = getMysqlPool(fId, c.mysql);
+        try {
+            await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`orderIndex\` INT DEFAULT 0`);
+        } catch(e) {}
+    } catch(e) {}
+};
+
 const dbGetAll = async (fId, table) => {
     const c = getFacilityConfig(fId); if (!c) return [];
     const pool = getMysqlPool(fId, c.mysql);
+    if (table === 'bays') {
+        await initBaysTable(fId);
+        const [rows] = await pool.query(`SELECT * FROM \`bays\` ORDER BY \`orderIndex\` ASC, \`name\` ASC`);
+        return rows.map(r => formatFromDb(table, r));
+    }
     const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
     return rows.map(r => formatFromDb(table, r));
 };

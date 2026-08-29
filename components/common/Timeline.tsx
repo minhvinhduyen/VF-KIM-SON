@@ -91,6 +91,15 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
   const [resizingState, setResizingState] = useState<ResizingState | null>(null);
   const [ghostPosition, setGhostPosition] = useState<{ top: number; left: number; width: number } | null>(null);
 
+  const sortedBays = React.useMemo(() => {
+    return [...bays].sort((a, b) => {
+      const orderA = a.orderIndex !== undefined && a.orderIndex !== null ? Number(a.orderIndex) : 999;
+      const orderB = b.orderIndex !== undefined && b.orderIndex !== null ? Number(b.orderIndex) : 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name, 'vi', { numeric: true });
+    });
+  }, [bays]);
+
   const canSchedule = user?.role === Role.ServiceAdvisor || user?.role === Role.CustomerCare || user?.role === Role.Manager;
 
   const getPositionAndWidth = (start: Date, end: Date) => {
@@ -253,11 +262,11 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
 
     const mouseY = e.clientY - gridRect.top;
     
-    const bayRowHeight = isFullScreen && bays.length > 0 ? gridRect.height / bays.length : 128;
+    const bayRowHeight = isFullScreen && sortedBays.length > 0 ? gridRect.height / sortedBays.length : 128;
     const laneHeight = bayRowHeight / 2;
     const ghostHeight = isFullScreen ? 32 : 48; // h-8 : h-12 in pixels
 
-    const bayIndex = Math.max(0, Math.min(bays.length - 1, Math.floor(mouseY / bayRowHeight)));
+    const bayIndex = Math.max(0, Math.min(sortedBays.length - 1, Math.floor(mouseY / bayRowHeight)));
     const yInBay = mouseY % bayRowHeight;
     const isTTLane = yInBay >= laneHeight;
     const bayTopOffset = bayIndex * bayRowHeight;
@@ -382,9 +391,9 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
     const newEndTime = new Date(newStartTime.getTime() + currentDraggingState.jobDurationMs);
     
     const finalTop = e.clientY - gridRect.top;
-    const bayRowHeight = isFullScreen && bays.length > 0 ? gridRect.height / bays.length : 128;
-    const bayIndex = Math.max(0, Math.min(bays.length - 1, Math.floor(finalTop / bayRowHeight)));
-    const targetBay = bays[bayIndex];
+    const bayRowHeight = isFullScreen && sortedBays.length > 0 ? gridRect.height / sortedBays.length : 128;
+    const bayIndex = Math.max(0, Math.min(sortedBays.length - 1, Math.floor(finalTop / bayRowHeight)));
+    const targetBay = sortedBays[bayIndex];
 
     if (targetBay && targetBay.type === BayType.CarWash) {
         alert("Không thể phân công thủ công cho Khoang Rửa Xe.\n\nCông việc rửa xe sẽ được tự động tạo và xếp hàng sau khi một công việc sửa chữa được 'Hoàn thành SC'.");
@@ -557,7 +566,7 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
             <div className="h-10 border-b font-bold p-1 md:p-2 text-gray-700 flex items-center justify-center bg-white sticky top-0 z-30 text-xs md:text-sm">
               <span>Khoang/KTV</span>
             </div>
-            {bays.map(bay => (
+            {sortedBays.map(bay => (
               <div key={bay.id} className={`border-b p-1 md:p-2 font-semibold flex flex-col justify-center ${isFullScreen ? 'flex-1' : 'h-32'}`}>
                 <div className="h-full flex flex-col justify-between">
                   <span className="text-[10px] md:text-xs font-bold text-gray-400 text-right">Dự Kiến</span>
@@ -627,7 +636,7 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
               
               <TimeIndicator displayDate={displayDate} />
               
-              {bays.map(bay => (
+              {sortedBays.map(bay => (
                 <div key={bay.id} className={`flex flex-col border-b relative ${isFullScreen ? 'flex-1' : 'h-32'}`}>
                   <div 
                     className={`h-1/2 border-b relative ${canSchedule ? 'cursor-pointer hover:bg-gray-50' : ''}`}

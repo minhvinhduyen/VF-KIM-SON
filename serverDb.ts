@@ -219,6 +219,18 @@ export const getFacilityConfig = (facilityId: string): DbConfig => {
     return config;
 };
 
+export const initBaysTable = async (facilityId: string) => {
+    try {
+        const config = getFacilityConfig(facilityId);
+        if (config.type === 'mysql') {
+            const pool = getMysqlPool(facilityId, config.mysql);
+            try {
+                await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`orderIndex\` INT DEFAULT 0`);
+            } catch(e) {}
+        }
+    } catch(e) {}
+};
+
 export const getAll = async (facilityId: string, table: string): Promise<any[]> => {
     const config = getFacilityConfig(facilityId);
     if (config.type === 'json') {
@@ -226,6 +238,11 @@ export const getAll = async (facilityId: string, table: string): Promise<any[]> 
         return db[table] || [];
     } else {
         const pool = getMysqlPool(facilityId, config.mysql);
+        if (table === 'bays') {
+            await initBaysTable(facilityId);
+            const [rows]: any = await pool.query(`SELECT * FROM \`bays\` ORDER BY \`orderIndex\` ASC, \`name\` ASC`);
+            return rows.map((r: any) => formatFromDb(table, r));
+        }
         const [rows]: any = await pool.query(`SELECT * FROM \`${table}\``);
         return rows.map((r: any) => formatFromDb(table, r));
     }

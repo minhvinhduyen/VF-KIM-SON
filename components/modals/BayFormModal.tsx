@@ -10,11 +10,18 @@ interface BayFormModalProps {
 
 const BayFormModal: React.FC<BayFormModalProps> = ({ bay, onSave, onClose }) => {
   const { state } = useApp();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    type: BayType;
+    technician: string;
+    supportsLift: boolean;
+    orderIndex?: number;
+  }>({
     name: '',
     type: BayType.General,
     technician: '',
     supportsLift: false,
+    orderIndex: undefined,
   });
 
   useEffect(() => {
@@ -24,6 +31,7 @@ const BayFormModal: React.FC<BayFormModalProps> = ({ bay, onSave, onClose }) => 
         type: bay.type,
         technician: bay.technician || '',
         supportsLift: bay.supportsLift,
+        orderIndex: bay.orderIndex,
       });
     }
   }, [bay]);
@@ -33,6 +41,8 @@ const BayFormModal: React.FC<BayFormModalProps> = ({ bay, onSave, onClose }) => 
     if (type === 'checkbox') {
         const { checked } = e.target as HTMLInputElement;
         setFormData(prev => ({...prev, [name]: checked }));
+    } else if (name === 'orderIndex') {
+        setFormData(prev => ({ ...prev, [name]: value === '' ? undefined : Number(value) }));
     } else {
         setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -70,6 +80,17 @@ const BayFormModal: React.FC<BayFormModalProps> = ({ bay, onSave, onClose }) => 
                     <option key={name} value={name}>{name}</option>
                 ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Thứ tự hiển thị (Số nhỏ xếp trước)</label>
+            <input 
+              type="number" 
+              name="orderIndex" 
+              value={formData.orderIndex !== undefined ? formData.orderIndex : ''} 
+              onChange={handleChange} 
+              placeholder="VD: 1, 2, 3..." 
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md" 
+            />
           </div>
           <div className="flex items-center pt-2">
                <input type="checkbox" id="supportsLift" name="supportsLift" checked={formData.supportsLift} onChange={handleChange} className="h-4 w-4 text-brand-blue border-gray-300 rounded focus:ring-brand-blue" />

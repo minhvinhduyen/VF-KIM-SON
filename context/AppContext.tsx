@@ -53,6 +53,15 @@ const initialState: AppState = {
 };
 
 
+const sortBays = (bays: Bay[]): Bay[] => {
+  return [...bays].sort((a, b) => {
+    const orderA = a.orderIndex !== undefined && a.orderIndex !== null ? Number(a.orderIndex) : 999;
+    const orderB = b.orderIndex !== undefined && b.orderIndex !== null ? Number(b.orderIndex) : 999;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name, 'vi', { numeric: true });
+  });
+};
+
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'FETCH_DATA_START':
@@ -63,7 +72,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
             ...state, 
             isLoading: action.type === 'FETCH_DATA_SUCCESS' ? false : state.isLoading,
             jobs: action.payload.jobs,
-            bays: action.payload.bays,
+            bays: sortBays(action.payload.bays || []),
             users: action.payload.users,
             vehicles: action.payload.vehicles || [],
         };
@@ -88,9 +97,9 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'DELETE_USER':
         return { ...state, users: state.users.filter(u => u.id !== action.payload) };
     case 'ADD_BAY':
-        return { ...state, bays: [...state.bays, action.payload] };
+        return { ...state, bays: sortBays([...state.bays, action.payload]) };
     case 'UPDATE_BAY':
-        return { ...state, bays: state.bays.map(b => b.id === action.payload.id ? action.payload : b) };
+        return { ...state, bays: sortBays(state.bays.map(b => b.id === action.payload.id ? action.payload : b)) };
     case 'DELETE_BAY':
         return { ...state, bays: state.bays.filter(b => b.id !== action.payload) };
     case 'ADD_VEHICLE':
