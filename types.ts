@@ -128,7 +128,7 @@ export interface Job {
 
 export const CAR_MODELS = [
     "Minio Green", "VF3", "VF34", "Nerio Green", "VF5", "Herio Green", 
-    "Limo Green", "MPV 7", "VF6", "VF7", "VF8", "VF9", "Khác"
+    "Limo Green", "MPV 7", "VF6", "VF7", "VF8", "VF9", "Fadil", "Lux A", "Lux SA", "Khác"
 ];
 
 // === Quotation Follow-up Tracking ===
