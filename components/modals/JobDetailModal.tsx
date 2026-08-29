@@ -51,6 +51,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, onClose, onEdit, o
                         <DetailRow label="Cố vấn DV" value={job.advisorName} />
                         <DetailRow label="Loại công việc" value={job.jobType} />
                         <DetailRow label="Trạng thái" value={job.status} />
+                        {job.laborCost ? <DetailRow label="Chi phí / Báo giá" value={`${Math.round(Number(job.laborCost)).toLocaleString('vi-VN')} vnđ`} /> : null}
                         <DetailRow label="Số Km" value={job.km ? job.km.toLocaleString('vi-VN') : undefined} />
                         <DetailRow label="KTV" value={job.technician} />
                         <DetailRow label="TG bắt đầu (DK)" value={formatTime(job.plannedStartTime)} />

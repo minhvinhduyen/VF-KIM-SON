@@ -730,10 +730,26 @@ const JobForm: React.FC<JobFormProps> = ({ existingJob, onClose, isAppointmentMo
                       {serviceAdvisors.map(sa => <option key={sa.id} value={sa.name}>{sa.name}</option>)}
                     </select>
                   </div>
-                  {formData.jobType === JobType.BodyAndPaint && !isAppointmentMode && (
+                  {formData.jobType === JobType.BodyAndPaint && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Chi phí nhân công (Đồng sơn)</label>
-                      <input type="number" name="laborCost" value={formData.laborCost ?? 0} onChange={handleNumberChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+                      <label className="block text-sm font-medium text-gray-700">Chi phí nhân công / Báo giá (Đồng sơn)</label>
+                      <div className="relative mt-1">
+                        <input 
+                          type="text" 
+                          name="laborCost" 
+                          value={formData.laborCost ? Math.round(Number(formData.laborCost)).toLocaleString('vi-VN') : ''} 
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                            const numericValue = rawValue ? parseInt(rawValue, 10) : 0;
+                            setFormData(prev => ({ ...prev, laborCost: numericValue }));
+                          }} 
+                          placeholder="VD: 6.217.927"
+                          className="block w-full p-2 pr-14 border border-gray-300 rounded-md font-bold text-gray-800 focus:ring-2 focus:ring-brand-blue outline-none" 
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500 font-bold text-xs">
+                          vnđ
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div>

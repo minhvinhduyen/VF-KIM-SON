@@ -13,8 +13,15 @@ const BscJobBlock: React.FC<{ job: Job; style: React.CSSProperties; colorClass: 
 
     const formatTime = (date?: Date) => date ? new Date(date).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'N/A';
 
+    const formatCurrencyVN = (val?: number | string | null) => {
+        if (val === undefined || val === null || val === '') return '';
+        const num = typeof val === 'string' ? parseFloat(String(val).replace(/[^0-9.-]+/g, '')) : val;
+        if (isNaN(num) || num === 0) return '';
+        return `${Math.round(num).toLocaleString('vi-VN')} vnđ`;
+    };
+
     const advisorLastName = job.advisorName.split(' ').pop() || '';
-    const laborCostDisplay = job.laborCost ? `${job.laborCost.toLocaleString('vi-VN')}đ` : '';
+    const laborCostDisplay = formatCurrencyVN(job.laborCost);
 
     return (
         <div
