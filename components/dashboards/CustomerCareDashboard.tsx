@@ -41,7 +41,7 @@ const CustomerCareDashboard: React.FC = () => {
       dispatch({ type: 'SET_TIMELINE_FULLSCREEN', payload: !isFullScreen });
   };
 
-  const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash);
+  const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'));
   
   const { filteredJobs, filters, setFilters, resetFilters } = useJobFilter(generalJobs);
 

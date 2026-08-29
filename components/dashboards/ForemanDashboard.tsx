@@ -220,7 +220,7 @@ const ForemanDashboard: React.FC = () => {
             />
             <div className={isFullScreen ? 'flex-grow' : ''}>
                 <Timeline 
-                    bays={state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash)} 
+                    bays={state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'))} 
                     jobs={filteredJobs} 
                     onJobClick={handleJobClick} 
                     onJobDrop={handleTimelineDrop} // Pass the drop handler

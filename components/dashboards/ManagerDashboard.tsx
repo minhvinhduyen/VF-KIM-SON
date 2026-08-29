@@ -120,7 +120,7 @@ const ManagerDashboard: React.FC = () => {
         setOpenGroup(prev => prev === groupName ? null : groupName);
     };
 
-    const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash);
+    const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'));
     const generalJobs = state.jobs.filter(j => j.jobType !== JobType.BodyAndPaint);
     
     // Filter out FreeInspection and Quotation statuses from Body Shop view

@@ -276,7 +276,30 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
           const washBayId = washBay ? washBay.id : 'bay-wash-1';
           const washDurationMs = 20 * 60 * 1000; // 20 minutes as requested
           
-          const washStartTime = findEarliestAvailableTime(washBayId);
+          const now = new Date();
+          const todayStart = new Date(now);
+          todayStart.setHours(0, 0, 0, 0);
+          const todayEnd = new Date(now);
+          todayEnd.setHours(23, 59, 59, 999);
+
+          // Tìm các xe đang rửa hoặc chờ rửa TRONG NGÀY HÔM NAY tại khoang rửa
+          const activeWashJobsToday = state.jobs.filter(j => 
+              j.bayId === washBayId && 
+              j.status === JobStatus.Washing &&
+              !j.actualEndTime &&
+              j.plannedEndTime && 
+              new Date(j.plannedEndTime) >= todayStart &&
+              new Date(j.plannedEndTime) <= todayEnd &&
+              j.id !== job.id
+          );
+
+          let washStartTime = now;
+          if (activeWashJobsToday.length > 0) {
+              const maxEndTime = Math.max(...activeWashJobsToday.map(j => new Date(j.plannedEndTime).getTime()));
+              if (maxEndTime > now.getTime()) {
+                  washStartTime = new Date(maxEndTime);
+              }
+          }
           const washEndTime = new Date(washStartTime.getTime() + washDurationMs);
 
           const newWashJob: Job = {
@@ -317,13 +340,27 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
   }
 
   const findEarliestAvailableTime = (bayId: string): Date => {
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+
     const busySlots = state.jobs
-        .filter(j => j.bayId === bayId && j.id !== job.id)
+        .filter(j => 
+            j.bayId === bayId && 
+            j.id !== job.id &&
+            j.status !== JobStatus.Ready &&
+            j.status !== JobStatus.Exited &&
+            j.status !== JobStatus.MissedAppointment &&
+            !j.actualEndTime &&
+            j.plannedEndTime &&
+            new Date(j.plannedEndTime) >= todayStart &&
+            new Date(j.plannedEndTime) <= todayEnd
+        )
         .map(j => {
-            let end;
-            if (j.actualEndTime) {
-                end = new Date(j.actualEndTime);
-            } else if (j.actualStartTime) {
+            let end: Date;
+            if (j.actualStartTime) {
                 const duration = new Date(j.plannedEndTime).getTime() - new Date(j.plannedStartTime).getTime();
                 end = new Date(new Date(j.actualStartTime).getTime() + duration);
             } else {
@@ -334,7 +371,6 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
         .sort((a, b) => a.end.getTime() - b.end.getTime());
 
     const lastBusySlot = busySlots[busySlots.length - 1];
-    const now = new Date();
     if (!lastBusySlot) return now;
 
     const lastEndTime = new Date(lastBusySlot.end.getTime() + 60000); // add 1 minute buffer
