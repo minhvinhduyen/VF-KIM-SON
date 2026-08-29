@@ -271,11 +271,13 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
         await Promise.all(updatePromises);
 
         if (shouldWash) {
-          const washBayId = 'bay-wash-1';
-          const washDurationMs = 20 * 60 * 1000; // Updated to 20 minutes as requested
+          const washBay = state.bays.find(b => b.type === BayType.CarWash) 
+                       || state.bays.find(b => b.name.toLowerCase().includes('rửa'));
+          const washBayId = washBay ? washBay.id : 'bay-wash-1';
+          const washDurationMs = 20 * 60 * 1000; // 20 minutes as requested
           
-          const now = new Date();
-          const washEndTime = new Date(now.getTime() + washDurationMs);
+          const washStartTime = findEarliestAvailableTime(washBayId);
+          const washEndTime = new Date(washStartTime.getTime() + washDurationMs);
 
           const newWashJob: Job = {
               // Core info from parent job
@@ -290,7 +292,7 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
               jobType: job.jobType, 
               status: JobStatus.Washing,
               bayId: washBayId,
-              plannedStartTime: now,
+              plannedStartTime: washStartTime,
               plannedEndTime: washEndTime,
               actualStartTime: undefined, // Changed to undefined to represent "Waiting"
               actualEndTime: undefined,
