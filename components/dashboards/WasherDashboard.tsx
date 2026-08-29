@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../hooks/useApp';
 import { useAuth } from '../../hooks/useAuth';
-import { Job, JobStatus, BayType } from '../../types';
+import { Job, JobStatus, BayType, isCarWashBay } from '../../types';
 import ConfirmationModal from '../modals/ConfirmationModal';
 
 const WasherDashboard: React.FC = () => {
@@ -20,7 +20,7 @@ const WasherDashboard: React.FC = () => {
 
     const washingJobs = useMemo(() => {
         const washBayIds = new Set(
-            state.bays.filter(b => b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa')).map(b => b.id)
+            state.bays.filter(isCarWashBay).map(b => b.id)
         );
         return state.jobs.filter(j => 
             j.status === JobStatus.Washing || 

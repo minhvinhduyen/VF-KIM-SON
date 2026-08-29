@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Job, Bay, StageHistory } from '../../types';
-import { JobStatus, JobType, Role, BodyShopStage, BayType } from '../../types';
+import { JobStatus, JobType, Role, BodyShopStage, BayType, isCarWashBay } from '../../types';
 import { useApp } from '../../hooks/useApp';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -271,9 +271,8 @@ const JobAssignmentModal: React.FC<JobAssignmentModalProps> = ({ job, bays, onCl
         await Promise.all(updatePromises);
 
         if (shouldWash) {
-          const washBay = state.bays.find(b => b.type === BayType.CarWash) 
-                       || state.bays.find(b => b.name.toLowerCase().includes('rửa'));
-          const washBayId = washBay ? washBay.id : 'bay-wash-1';
+          const washBay = state.bays.find(isCarWashBay);
+          const washBayId = washBay ? washBay.id : (state.bays.length > 0 ? state.bays[state.bays.length - 1].id : 'bay-wash-1');
           const washDurationMs = 20 * 60 * 1000; // 20 minutes as requested
           
           const now = new Date();

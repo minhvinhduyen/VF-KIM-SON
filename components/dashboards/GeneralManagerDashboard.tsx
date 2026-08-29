@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Timeline from '../common/Timeline';
 import BodyShopCalendar from '../common/BodyShopCalendar';
 import JobAssignmentModal from '../modals/JobAssignmentModal';
-import { BayType, JobType, Role, Job, Bay, JobStatus } from '../../types';
+import { BayType, JobType, Role, Job, Bay, JobStatus, isCarWashBay } from '../../types';
 import TimelineFilter from '../common/TimelineFilter';
 import { useJobFilter } from '../../hooks/useJobFilter';
 import AppointmentSchedule from '../common/AppointmentSchedule';
@@ -189,7 +189,7 @@ const GeneralManagerDashboard: React.FC = () => {
             />
             <div className={isFullScreen ? 'flex-grow' : ''}>
                 <Timeline 
-                    bays={state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'))} 
+                    bays={state.bays.filter(b => b.type === BayType.General || isCarWashBay(b))} 
                     jobs={filteredJobs} 
                     onJobClick={handleJobClick} 
                     onJobDrop={handleTimelineDrop}

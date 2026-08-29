@@ -49,6 +49,16 @@ export interface Bay {
   orderIndex?: number;
 }
 
+export const isCarWashBay = (bay: Bay | { type?: string; name?: string } | null | undefined): boolean => {
+  if (!bay) return false;
+  if (bay.type === BayType.CarWash || bay.type === 'CarWash' || bay.type === 'car_wash') return true;
+  const cleanName = (bay.name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return cleanName.includes('rua') || cleanName.includes('wash');
+};
+
 export enum JobType {
   ScheduledMaintenance = 'Bảo dưỡng định kỳ',
   Repair = 'Sửa chữa chung',

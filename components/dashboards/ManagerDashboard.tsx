@@ -6,7 +6,7 @@ import BodyShopCalendar from '../common/BodyShopCalendar';
 import UserManagement from '../management/UserManagement';
 import BayManagement from '../management/BayManagement';
 import ReportGenerator from '../management/ReportGenerator';
-import { BayType, JobType, Job, JobStatus } from '../../types';
+import { BayType, JobType, Job, JobStatus, isCarWashBay } from '../../types';
 import TimelineFilter from '../common/TimelineFilter';
 import { useJobFilter } from '../../hooks/useJobFilter';
 import JobForm from '../forms/JobForm';
@@ -120,7 +120,7 @@ const ManagerDashboard: React.FC = () => {
         setOpenGroup(prev => prev === groupName ? null : groupName);
     };
 
-    const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'));
+    const generalBays = state.bays.filter(b => b.type === BayType.General || isCarWashBay(b));
     const generalJobs = state.jobs.filter(j => j.jobType !== JobType.BodyAndPaint);
     
     // Filter out FreeInspection and Quotation statuses from Body Shop view

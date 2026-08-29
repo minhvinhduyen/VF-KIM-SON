@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Timeline from '../common/Timeline';
 import BodyShopCalendar from '../common/BodyShopCalendar';
 import JobForm from '../forms/JobForm';
-import { BayType, JobType, Job, JobStatus } from '../../types';
+import { BayType, JobType, Job, JobStatus, isCarWashBay } from '../../types';
 import type { QuotationFollowup } from '../../types';
 import TimelineFilter from '../common/TimelineFilter';
 import { useJobFilter } from '../../hooks/useJobFilter';
@@ -35,7 +35,7 @@ const ServiceAdvisorDashboard: React.FC = () => {
       dispatch({ type: 'SET_TIMELINE_FULLSCREEN', payload: !isFullScreen });
   };
 
-  const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'));
+  const generalBays = state.bays.filter(b => b.type === BayType.General || isCarWashBay(b));
   const generalJobs = state.jobs.filter(j => j.jobType !== JobType.BodyAndPaint);
   
   // Filter out FreeInspection and Quotation statuses from Body Shop view

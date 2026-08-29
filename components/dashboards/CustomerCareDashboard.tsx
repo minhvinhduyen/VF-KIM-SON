@@ -4,7 +4,7 @@ import { useApp } from '../../hooks/useApp';
 import { useAuth } from '../../hooks/useAuth';
 import Timeline from '../common/Timeline';
 import JobForm from '../forms/JobForm';
-import { BayType, JobType, Job, JobStatus } from '../../types';
+import { BayType, JobType, Job, JobStatus, isCarWashBay } from '../../types';
 import TimelineFilter from '../common/TimelineFilter';
 import { useJobFilter } from '../../hooks/useJobFilter';
 import AppointmentSchedule from '../common/AppointmentSchedule';
@@ -41,7 +41,7 @@ const CustomerCareDashboard: React.FC = () => {
       dispatch({ type: 'SET_TIMELINE_FULLSCREEN', payload: !isFullScreen });
   };
 
-  const generalBays = state.bays.filter(b => b.type === BayType.General || b.type === BayType.CarWash || b.name.toLowerCase().includes('rửa'));
+  const generalBays = state.bays.filter(b => b.type === BayType.General || isCarWashBay(b));
   
   const { filteredJobs, filters, setFilters, resetFilters } = useJobFilter(generalJobs);
 
