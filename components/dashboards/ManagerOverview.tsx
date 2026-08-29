@@ -128,7 +128,10 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({ onNavigateTab }) => {
   const totalJobs = filteredJobs.length;
   const completedJobs = filteredJobs.filter(j => j.status === JobStatus.Ready || j.status === JobStatus.Exited).length;
   const inProgressJobs = filteredJobs.filter(j => j.status === JobStatus.InProgress).length;
-  const revenue = filteredJobs.reduce((acc, j) => acc + (j.laborCost || 0), 0);
+  const revenue = filteredJobs.reduce((acc, j) => {
+    const cost = Number(j.laborCost);
+    return acc + (isNaN(cost) ? 0 : cost);
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -157,55 +160,57 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({ onNavigateTab }) => {
 
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-3.5 min-w-0">
+          <div className="p-3 bg-blue-50 rounded-lg text-blue-600 flex-shrink-0">
             <Calendar size={24} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium font-sans">Tổng lượt xe</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 font-medium font-sans truncate">Tổng lượt xe</p>
             <h3 className="text-xl font-bold text-gray-900">{totalJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-green-50 rounded-lg text-green-600">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-3.5 min-w-0">
+          <div className="p-3 bg-green-50 rounded-lg text-green-600 flex-shrink-0">
             <CheckCircle2 size={24} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium font-sans">Hoàn thành</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 font-medium font-sans truncate">Hoàn thành</p>
             <h3 className="text-xl font-bold text-gray-900">{completedJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-3.5 min-w-0">
+          <div className="p-3 bg-orange-50 rounded-lg text-orange-600 flex-shrink-0">
             <Clock size={24} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium font-sans">Đang sửa chữa</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 font-medium font-sans truncate">Đang sửa chữa</p>
             <h3 className="text-xl font-bold text-gray-900">{inProgressJobs}</h3>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center space-x-3.5 min-w-0">
+          <div className="p-3 bg-purple-50 rounded-lg text-purple-600 flex-shrink-0">
             <TrendingUp size={24} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium font-sans">Doanh thu dự kiến</p>
-            <h3 className="text-xl font-bold text-gray-900">{revenue.toLocaleString()}đ</h3>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 font-medium font-sans truncate">Doanh thu dự kiến</p>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 break-words leading-tight mt-0.5" title={`${Math.round(revenue).toLocaleString('vi-VN')}đ`}>
+              {Math.round(revenue).toLocaleString('vi-VN')}đ
+            </h3>
           </div>
         </div>
 
         {/* Card Xe báo giá chờ - Clickable */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('quotation_followup')}
-          className="bg-white p-5 rounded-xl border border-amber-200 hover:border-amber-400 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group hover:scale-[1.02]"
+          className="bg-white p-5 rounded-xl border border-amber-200 hover:border-amber-400 shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group hover:scale-[1.02] min-w-0"
           title="Bấm để xem danh sách chi tiết xe báo giá chờ"
         >
-          <div className="flex items-center space-x-3.5">
-            <div className="p-3 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-100 transition-colors">
+          <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+            <div className="p-3 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-100 transition-colors flex-shrink-0">
               <FileText size={24} />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium font-sans">Xe báo giá chờ</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-gray-500 font-medium font-sans truncate">Xe báo giá chờ</p>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 <h3 className="text-xl font-bold text-amber-700">{totalQuotations}</h3>
                 {pendingQuotations > 0 && (
@@ -216,7 +221,7 @@ const ManagerOverview: React.FC<ManagerOverviewProps> = ({ onNavigateTab }) => {
               </div>
             </div>
           </div>
-          <span className="text-amber-500 text-sm font-bold group-hover:translate-x-1 transition-transform">
+          <span className="text-amber-500 text-sm font-bold group-hover:translate-x-1 transition-transform flex-shrink-0 ml-1">
             &rarr;
           </span>
         </div>

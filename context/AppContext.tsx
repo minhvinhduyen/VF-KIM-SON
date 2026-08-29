@@ -172,6 +172,7 @@ const hydrateJobsAfterFetch = (items: any[]): Job[] => {
         const hydratedItem: Job = {
             ...item,
             km: item.km ? Number(item.km) : undefined,
+            laborCost: (item.laborCost !== undefined && item.laborCost !== null && item.laborCost !== '') ? Number(item.laborCost) : undefined,
             plannedStartTime,
             plannedEndTime,
             actualStartTime: safeNewDate(item.actualStartTime),
