@@ -167,6 +167,7 @@ const dbInsert = async (facilityId: string, table: string, data: any) => {
     const config = configs[facilityId];
     if (!config || config.type !== 'mysql') throw new Error('Config not found');
     const pool = getMysqlPool(facilityId, config.mysql);
+    if (table === 'bays') await initBaysTable(facilityId, pool);
     const formatted = formatToDb(table, data);
     const columns = DB_COLUMNS[table];
     if (!columns) throw new Error(`Unknown table: ${table}`);
@@ -182,6 +183,7 @@ const dbUpdate = async (facilityId: string, table: string, id: string, data: any
     const config = configs[facilityId];
     if (!config || config.type !== 'mysql') throw new Error('Config not found');
     const pool = getMysqlPool(facilityId, config.mysql);
+    if (table === 'bays') await initBaysTable(facilityId, pool);
     const formatted = formatToDb(table, data);
     const columns = DB_COLUMNS[table];
     if (!columns) throw new Error(`Unknown table: ${table}`);
