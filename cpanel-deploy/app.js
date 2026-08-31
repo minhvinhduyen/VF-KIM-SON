@@ -95,9 +95,8 @@ const initBaysTable = async (fId) => {
     try {
         const c = getFacilityConfig(fId); if (!c) return;
         const pool = getMysqlPool(fId, c.mysql);
-        try {
-            await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`orderIndex\` INT DEFAULT 0`);
-        } catch(e) {}
+        try { await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`orderIndex\` INT DEFAULT 0`); } catch(e) {}
+        try { await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`technician\` VARCHAR(100) NULL`); } catch(e) {}
     } catch(e) {}
 };
 
@@ -115,6 +114,7 @@ const dbGetAll = async (fId, table) => {
 
 const dbInsert = async (fId, table, data) => {
     const c = getFacilityConfig(fId); if (!c) throw new Error('Config not found');
+    if (table === 'bays') await initBaysTable(fId);
     const pool = getMysqlPool(fId, c.mysql);
     const f = formatToDb(table, data);
     const keys = Object.keys(f);
@@ -124,6 +124,7 @@ const dbInsert = async (fId, table, data) => {
 
 const dbUpdate = async (fId, table, id, data) => {
     const c = getFacilityConfig(fId); if (!c) throw new Error('Config not found');
+    if (table === 'bays') await initBaysTable(fId);
     const pool = getMysqlPool(fId, c.mysql);
     const f = formatToDb(table, data); delete f.id;
     const keys = Object.keys(f);
