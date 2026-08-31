@@ -137,8 +137,14 @@ const DB_COLUMNS: { [key: string]: string[] } = {
            'stageHistory', 'jsonData', 'laborCost', 'appointmentCreatedAt', 'actualArrivalTime', 'isWaitingCustomer',
            'continuationOfJobId'],
     users: ['id', 'name', 'role', 'password', 'team'],
-    bays: ['id', 'name', 'type', 'supportsLift'],
+    bays: ['id', 'name', 'type', 'supportsLift', 'technician', 'orderIndex'],
     vehicles: ['id', 'licensePlate', 'customerName', 'customerPhone', 'carModel', 'vin', 'color', 'uio']
+};
+
+// Auto-migration: đảm bảo bảng bays có cột orderIndex và technician
+const initBaysTable = async (facilityId: string, pool: mysql.Pool) => {
+    try { await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`orderIndex\` INT DEFAULT 0`); } catch(e) {}
+    try { await pool.query(`ALTER TABLE \`bays\` ADD COLUMN \`technician\` VARCHAR(100) NULL`); } catch(e) {}
 };
 
 // DB Operations
@@ -147,6 +153,11 @@ const dbGetAll = async (facilityId: string, table: string) => {
     const config = configs[facilityId];
     if (!config || config.type !== 'mysql') return [];
     const pool = getMysqlPool(facilityId, config.mysql);
+    if (table === 'bays') {
+        await initBaysTable(facilityId, pool);
+        const [rows] = await pool.query(`SELECT * FROM \`bays\` ORDER BY \`orderIndex\` ASC, \`name\` ASC`);
+        return (rows as any[]).map(row => formatFromDb(table, row));
+    }
     const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
     return (rows as any[]).map(row => formatFromDb(table, row));
 };
