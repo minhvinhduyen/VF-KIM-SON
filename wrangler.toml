@@ -1,3 +1,5 @@
 name = "vfkimson"
-pages_build_output_dir = "dist"
 compatibility_date = "2024-09-25"
+
+[assets]
+directory = "./dist"
