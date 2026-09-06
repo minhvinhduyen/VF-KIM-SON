@@ -17,33 +17,34 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    // Khôi phục user từ sessionStorage khi tải lại trang
+    // Khôi phục user từ localStorage để duy trì đăng nhập cho đến khi bấm Đăng xuất
     try {
-      const saved = sessionStorage.getItem('auth_user');
+      const saved = localStorage.getItem('auth_user') || sessionStorage.getItem('auth_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log('[AuthContext] Khôi phục user từ sessionStorage:', parsed);
+        console.log('[AuthContext] Khôi phục user từ storage:', parsed);
         return parsed;
       }
     } catch (e) {
-      console.error('[AuthContext] Lỗi đọc sessionStorage:', e);
+      console.error('[AuthContext] Lỗi đọc storage:', e);
     }
     return null;
   });
   const { setFacility } = useApp();
 
-  // Đồng bộ user state vào sessionStorage
+  // Đồng bộ user state vào localStorage (duy trì đăng nhập vĩnh viễn)
   useEffect(() => {
     if (user) {
-      sessionStorage.setItem('auth_user', JSON.stringify(user));
-      console.log('[AuthContext] Đã lưu user vào sessionStorage:', user.id);
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      console.log('[AuthContext] Đã lưu user vào localStorage:', user.id);
     } else {
+      localStorage.removeItem('auth_user');
       sessionStorage.removeItem('auth_user');
-      console.log('[AuthContext] Đã xóa user khỏi sessionStorage');
+      console.log('[AuthContext] Đã xóa user khỏi storage');
     }
   }, [user]);
 
-  // Khi app khởi động lại và user đã có từ sessionStorage, thiết lập facility
+  // Khi app khởi động lại và user đã có từ localStorage, thiết lập facility
   useEffect(() => {
     if (user && user.facilityId) {
       console.log('[AuthContext] Khôi phục facility từ user đã lưu:', user.facilityId);
@@ -79,7 +80,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     console.log('[AuthContext] Đăng xuất');
     setUser(null);
-    // Xóa facility cũ để tránh stale data khi đăng nhập tài khoản khác
+    // Xóa toàn bộ thông tin đăng nhập và cơ sở đã lưu
+    localStorage.removeItem('auth_user');
+    sessionStorage.removeItem('auth_user');
     localStorage.removeItem('activeFacilityId');
     sessionStorage.removeItem('superadmin_active_tab');
     // Reset API facility ID để không gửi header cũ
