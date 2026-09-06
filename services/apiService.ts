@@ -313,3 +313,13 @@ export const deleteQuotationFollowup = async (id: string) => {
     });
     return handleResponse(res);
 };
+
+export const scanPlate = async (imageBase64: string): Promise<{ plate: string }> => {
+    const res = await fetch('/api/scan-plate', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ imageBase64 })
+    });
+    return handleResponse(res);
+};
+

@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../../hooks/useApp';
 import { Job, JobStatus, JobType, Vehicle } from '../../types';
+import { scanPlate } from '../../services/apiService';
 
 const VehicleArrival: React.FC = () => {
   const { state, addJob, updateJob, refreshData } = useApp();
@@ -208,18 +209,7 @@ const VehicleArrival: React.FC = () => {
         setScanStep('processing');
         const base64Data = imageUrl.split(',')[1];
         
-        const response = await fetch('/api/scan-plate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64Data })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Lỗi khi quét biển số');
-        }
-
-        const data = await response.json();
+        const data = await scanPlate(base64Data);
         const text = data.plate;
         const formatted = formatLicensePlate(text);
         setScannedPlate(formatted);
