@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     // Xóa facility cũ để tránh stale data khi đăng nhập tài khoản khác
     localStorage.removeItem('activeFacilityId');
+    sessionStorage.removeItem('superadmin_active_tab');
     // Reset API facility ID để không gửi header cũ
     import('../services/apiService').then(api => api.setApiFacilityId(''));
     // Reset facility trong AppContext

@@ -73,7 +73,15 @@ const toDateString = (d: Date): string => {
 const SuperAdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { setFacility } = useApp();
-  const [activeTab, setActiveTab] = useState<'overview' | string>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | string>(() => {
+    try {
+      const saved = sessionStorage.getItem('superadmin_active_tab');
+      if (saved && (saved === 'overview' || saved === 'chain_admins' || saved.startsWith('facility_'))) {
+        return saved;
+      }
+    } catch(e) {}
+    return 'overview';
+  });
   const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
   const [overviewData, setOverviewData] = useState<OverviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +140,9 @@ const SuperAdminDashboard: React.FC = () => {
 
   const handleTabChange = (tabId: 'overview' | string) => {
     setActiveTab(tabId);
+    try {
+      sessionStorage.setItem('superadmin_active_tab', tabId);
+    } catch(e) {}
     if (tabId.startsWith('facility_')) {
       setFacility(tabId);
     }
