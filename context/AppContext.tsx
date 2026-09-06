@@ -18,6 +18,7 @@ interface AppState {
   error: string | null;
   logoUrl: string;
   activeFacilityId: string | null;
+  loadTrigger: number;
 }
 
 type Action =
@@ -50,6 +51,7 @@ const initialState: AppState = {
   error: null,
   logoUrl: localStorage.getItem('app_custom_logo') || DEFAULT_LOGO,
   activeFacilityId: localStorage.getItem('activeFacilityId') || '',
+  loadTrigger: 0,
 };
 
 
@@ -70,7 +72,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'SET_ALL_DATA': {
         return { 
             ...state, 
-            isLoading: action.type === 'FETCH_DATA_SUCCESS' ? false : state.isLoading,
+            isLoading: false,
             jobs: action.payload.jobs,
             bays: sortBays(action.payload.bays || []),
             users: action.payload.users,
@@ -89,7 +91,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
         ),
       };
     case 'DELETE_JOB':
-      return { ...state, jobs: state.jobs.filter(job => job.id !== action.payload) };
+      return {
+        ...state,
+        jobs: state.jobs.filter(job => job.id !== action.payload),
+      };
     case 'ADD_USER':
         return { ...state, users: [...state.users, action.payload] };
     case 'UPDATE_USER':
@@ -115,6 +120,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
             ...state, 
             activeFacilityId: action.payload, 
             isLoading: !!action.payload,
+            loadTrigger: state.loadTrigger + 1,
             jobs: [], 
             bays: [], 
             users: [], 
@@ -261,7 +267,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     loadData();
 
     return () => { cancelled = true; }; // Cleanup: cancel khi facilityId thay đổi
-  }, [state.activeFacilityId]);
+  }, [state.activeFacilityId, state.loadTrigger]);
 
   // Optimized refresh: Only fetches lightweight data (Jobs/Bays/Users), reusing existing Vehicles.
   const refreshData = useCallback(async () => {
