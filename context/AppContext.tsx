@@ -111,7 +111,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'SET_LOGO':
         return { ...state, logoUrl: action.payload };
     case 'SET_FACILITY':
-        return { ...state, activeFacilityId: action.payload, jobs: [], bays: [], users: [], vehicles: [] };
+        return { 
+            ...state, 
+            activeFacilityId: action.payload, 
+            isLoading: !!action.payload,
+            jobs: [], 
+            bays: [], 
+            users: [], 
+            vehicles: [] 
+        };
     default:
       return state;
   }
