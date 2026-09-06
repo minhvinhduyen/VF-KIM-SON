@@ -318,10 +318,11 @@ const getSuperAdmin = async (identifier) => {
 
 const findUserByUsername = async (username) => {
     loadConfigs();
+    const cleanUser = String(username).trim().toLowerCase();
     for (const fId of Object.keys(configs).filter(k => k.startsWith('facility_'))) {
         try {
             const users = await dbGetAll(fId, 'users');
-            const match = users.find(u => String(u.id) === username);
+            const match = users.find(u => String(u.id).trim().toLowerCase() === cleanUser);
             if (match) return { facilityId: fId, user: match };
         } catch(e) { continue; }
     }
@@ -330,9 +331,10 @@ const findUserByUsername = async (username) => {
 
 const findUserInFacility = async (username, facilityId) => {
     loadConfigs();
+    const cleanUser = String(username).trim().toLowerCase();
     try {
         const users = await dbGetAll(facilityId, 'users');
-        const match = users.find(u => String(u.id) === username);
+        const match = users.find(u => String(u.id).trim().toLowerCase() === cleanUser);
         if (match) return { facilityId, user: match };
     } catch(e) { console.error(`Error finding user ${username} in ${facilityId}:`, e); }
     return null;
