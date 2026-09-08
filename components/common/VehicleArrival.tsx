@@ -260,6 +260,7 @@ const VehicleArrival: React.FC = () => {
             j.status !== JobStatus.Appointment &&
             j.status !== JobStatus.FreeInspection && 
             j.status !== JobStatus.Quotation &&
+            j.status !== JobStatus.Rescheduled &&
             j.status !== JobStatus.Exited &&
             j.status !== JobStatus.MissedAppointment
         );

@@ -29,11 +29,12 @@ const CustomerCareDashboard: React.FC = () => {
   
   const generalJobs = state.jobs.filter(j => j.jobType !== JobType.BodyAndPaint);
   
-  // Filter out FreeInspection and Quotation statuses from Body Shop view
+  // Filter out FreeInspection, Quotation, and Rescheduled statuses from Body Shop view
   const bodyShopJobs = state.jobs.filter(j => 
     j.jobType === JobType.BodyAndPaint && 
     j.status !== JobStatus.FreeInspection && 
-    j.status !== JobStatus.Quotation
+    j.status !== JobStatus.Quotation &&
+    j.status !== JobStatus.Rescheduled
   );
 
 

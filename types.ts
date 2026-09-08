@@ -81,6 +81,7 @@ export enum JobStatus {
   // Statuses for Gate Pass (Giấy ra cổng)
   FreeInspection = 'Kiểm tra miễn phí',
   Quotation = 'Báo giá',
+  Rescheduled = 'Hẹn lại',
 }
 
 export enum BodyShopStage {

@@ -177,10 +177,11 @@ const BodyShopCalendar: React.FC<BodyShopCalendarProps> = ({ jobs, onJobClick = 
     // Mỗi phần tử là một mảng đại diện cho 1 dòng, chứa các Job (hoặc null) cho từng ngày trong tháng
     const rows: (Job | null)[][] = Array(15).fill(null).map(() => Array(daysInMonth + 1).fill(null));
     
-    // FILTER: Loại bỏ các xe Báo giá và Kiểm tra miễn phí ngay tại nguồn hiển thị
+    // FILTER: Loại bỏ các xe Báo giá, Kiểm tra miễn phí và Hẹn lại ngay tại nguồn hiển thị
     const visibleJobs = jobs.filter(j => 
         j.status !== JobStatus.FreeInspection && 
-        j.status !== JobStatus.Quotation
+        j.status !== JobStatus.Quotation &&
+        j.status !== JobStatus.Rescheduled
     );
     
     const sortedJobs = [...visibleJobs].sort((a, b) => {

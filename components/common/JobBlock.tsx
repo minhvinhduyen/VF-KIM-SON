@@ -106,6 +106,8 @@ const JobBlock: React.FC<JobBlockProps> = ({ job, left, width, onDoubleClick, on
         return 'bg-green-400';
       case JobStatus.Quotation:
         return 'bg-emerald-400';
+      case JobStatus.Rescheduled:
+        return 'bg-amber-400';
       case JobStatus.Washing:
         return job.actualStartTime ? 'bg-status-washing' : 'bg-gray-400'; // Blue if started, Gray if pending
       case JobStatus.Ready:
@@ -131,6 +133,7 @@ const JobBlock: React.FC<JobBlockProps> = ({ job, left, width, onDoubleClick, on
     job.status !== JobStatus.Ready && 
     job.status !== JobStatus.FreeInspection && 
     job.status !== JobStatus.Quotation && 
+    job.status !== JobStatus.Rescheduled && 
     !isLocked;
   
   const heightClass = isFullScreen ? 'h-8' : 'h-12';

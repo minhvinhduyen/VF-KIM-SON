@@ -232,7 +232,7 @@ const ReportGenerator: React.FC = () => {
 
                     // Logic phân loại
                     let type = '';
-                    if (job.status === JobStatus.Quotation || job.status === JobStatus.FreeInspection) {
+                    if (job.status === JobStatus.Quotation || job.status === JobStatus.FreeInspection || job.status === JobStatus.Rescheduled) {
                         type = 'other';
                     } else if (job.jobType === JobType.ScheduledMaintenance) {
                         type = 'maintenance';
@@ -284,7 +284,7 @@ const ReportGenerator: React.FC = () => {
                 jobsToProcess.forEach(job => {
                     // Chỉ tính SCC và Bảo dưỡng, bỏ qua Đồng sơn, Rửa xe, Báo giá
                     if (job.jobType === JobType.BodyAndPaint) return;
-                    if (job.status === JobStatus.Washing || job.status === JobStatus.FreeInspection || job.status === JobStatus.Quotation || job.status === JobStatus.Arrived || job.status === JobStatus.Appointment || job.status === JobStatus.TicketOpened) return;
+                    if (job.status === JobStatus.Washing || job.status === JobStatus.FreeInspection || job.status === JobStatus.Quotation || job.status === JobStatus.Rescheduled || job.status === JobStatus.Arrived || job.status === JobStatus.Appointment || job.status === JobStatus.TicketOpened) return;
                     
                     if (!job.technician) return;
 
@@ -337,7 +337,7 @@ const ReportGenerator: React.FC = () => {
 
                 jobsToProcess.forEach(job => {
                     // Chỉ tính các job đã hoàn thành hoặc đang làm (có doanh thu)
-                    if (job.status === JobStatus.Washing || job.status === JobStatus.FreeInspection || job.status === JobStatus.Quotation || job.status === JobStatus.Arrived || job.status === JobStatus.Appointment || job.status === JobStatus.TicketOpened) return;
+                    if (job.status === JobStatus.Washing || job.status === JobStatus.FreeInspection || job.status === JobStatus.Quotation || job.status === JobStatus.Rescheduled || job.status === JobStatus.Arrived || job.status === JobStatus.Appointment || job.status === JobStatus.TicketOpened) return;
 
                     let revenue = { congSCC: 0, congDong: 0, congSon: 0, phuTung: 0 };
                     if (job.jsonData) {

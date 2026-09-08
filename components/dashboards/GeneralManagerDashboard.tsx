@@ -35,7 +35,8 @@ const GeneralManagerDashboard: React.FC = () => {
   const bodyShopJobs = useMemo(() => state.jobs.filter(j => 
     j.jobType === JobType.BodyAndPaint && 
     j.status !== JobStatus.FreeInspection && 
-    j.status !== JobStatus.Quotation
+    j.status !== JobStatus.Quotation &&
+    j.status !== JobStatus.Rescheduled
   ), [state.jobs]);
 
   const { filteredJobs, filters, setFilters, resetFilters } = useJobFilter(generalJobs);

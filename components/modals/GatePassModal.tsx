@@ -119,13 +119,23 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
         // Tìm tất cả các công việc liên quan đến xe này (cùng biển số)
         const relatedJobs = state.jobs.filter(j => j.licensePlate === primaryJob.licensePlate);
 
-        // Cập nhật tất cả các công việc liên quan sang trạng thái Đã ra cổng
+        // Cập nhật các công việc của xe này sang trạng thái ĐÃ CẤP PHÉP RA CỔNG tương ứng
+        // (Bảo vệ sẽ quét camera hoặc bấm xác nhận để chuyển thành Đã ra cổng khi xe qua barie)
+        let approvedExitStatus: JobStatus;
+        if (formData.status === JobStatus.Quotation) {
+            approvedExitStatus = JobStatus.Quotation;
+        } else if (formData.status === JobStatus.Appointment) {
+            approvedExitStatus = JobStatus.Rescheduled;
+        } else {
+            approvedExitStatus = JobStatus.FreeInspection;
+        }
+
         const updatePromises = relatedJobs.map(job => {
             const updatedJob: Job = {
                 ...job,
                 // Nếu là công việc được chọn để in giấy ra cổng, cập nhật thêm thông tin từ form
                 ...(job.id === selectedJobId ? formData : {}),
-                status: JobStatus.Exited,
+                status: approvedExitStatus,
                 // KHÔNG xóa bayId để vẫn hiện trên timeline theo yêu cầu người dùng
                 actualEndTime: job.actualEndTime || new Date(), 
                 // Đảm bảo có thời gian bắt đầu nếu chưa có

@@ -209,6 +209,15 @@ const SecurityDashboard: React.FC = () => {
             const activeJobs = activeJobsForPlate;
             
             if (activeJobs.length === 0) {
+                // Kiểm tra xem xe có vừa ra cổng hôm nay không
+                const recentExitedJob = state.jobs.find(j => 
+                    normalizePlate(j.licensePlate) === normalizePlate(plate) && 
+                    j.status === JobStatus.Exited
+                );
+                if (recentExitedJob && recentExitedJob.actualExitTime) {
+                    const exitTimeStr = new Date(recentExitedJob.actualExitTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    throw new Error(`Xe ${plate} đã hoàn tất thủ tục ra cổng vào lúc ${exitTimeStr}.`);
+                }
                 throw new Error(`Không tìm thấy xe ${plate} đang ở trong xưởng.`);
             }
 
@@ -219,11 +228,26 @@ const SecurityDashboard: React.FC = () => {
             }
 
             // Kiểm tra trạng thái sẵn sàng ra cổng
-            const readyStatuses = [JobStatus.Ready, JobStatus.RepairComplete, JobStatus.FreeInspection, JobStatus.Quotation];
-            const isReady = activeJobs.some(j => readyStatuses.includes(j.status));
+            const readyStatuses = [
+                JobStatus.Ready, 
+                JobStatus.RepairComplete, 
+                JobStatus.FreeInspection, 
+                JobStatus.Quotation,
+                JobStatus.Rescheduled
+            ];
+            const matchingReadyJob = activeJobs.find(j => readyStatuses.includes(j.status));
             
-            if (!isReady) {
-                throw new Error(`Xe ${plate} chưa hoàn thành sửa chữa hoặc chưa được cấp phép ra cổng.`);
+            if (!matchingReadyJob) {
+                throw new Error(`Xe ${plate} chưa được Cố vấn dịch vụ cấp phép ra cổng. Vui lòng liên hệ CVDV.`);
+            }
+
+            let reasonText = 'Sửa chữa hoàn tất';
+            if (matchingReadyJob.status === JobStatus.FreeInspection) {
+                reasonText = 'Kiểm tra miễn phí';
+            } else if (matchingReadyJob.status === JobStatus.Quotation) {
+                reasonText = 'Lấy báo giá';
+            } else if (matchingReadyJob.status === JobStatus.Rescheduled) {
+                reasonText = 'Xưởng đông, hẹn lại';
             }
             
             // Cập nhật tất cả các lệnh liên quan của xe này thành "Đã ra cổng"
@@ -235,7 +259,7 @@ const SecurityDashboard: React.FC = () => {
                 });
             }
             
-            setStatusMessage({ type: 'success', text: `Xác nhận xe ${plate} ra cổng thành công.` });
+            setStatusMessage({ type: 'success', text: `Xác nhận xe ${plate} ra cổng thành công (${reasonText}).` });
             setTimeout(() => setStatusMessage(null), 3000);
         }
 
@@ -279,6 +303,45 @@ const SecurityDashboard: React.FC = () => {
     return timeB - timeA;
   });
 
+  const handleDirectExitConfirm = async (jobToExit: Job) => {
+      setIsSubmitting(true);
+      try {
+          const now = new Date();
+          const activeJobs = state.jobs.filter(j => 
+              normalizePlate(j.licensePlate) === normalizePlate(jobToExit.licensePlate) && 
+              j.status !== JobStatus.Exited
+          );
+
+          let reasonText = 'Sửa chữa hoàn tất';
+          if (jobToExit.status === JobStatus.FreeInspection) {
+              reasonText = 'Kiểm tra miễn phí';
+          } else if (jobToExit.status === JobStatus.Quotation) {
+              reasonText = 'Lấy báo giá';
+          } else if (jobToExit.status === JobStatus.Rescheduled) {
+              reasonText = 'Xưởng đông, hẹn lại';
+          }
+
+          for (const activeJob of activeJobs) {
+              await updateJob({
+                  ...activeJob,
+                  status: JobStatus.Exited,
+                  actualExitTime: now
+              });
+          }
+
+          setStatusMessage({ 
+              type: 'success', 
+              text: `Xác nhận xe ${jobToExit.licensePlate} ra cổng thành công (${reasonText}).` 
+          });
+          setTimeout(() => setStatusMessage(null), 3000);
+          await refreshData();
+      } catch (err) {
+          setStatusMessage({ type: 'error', text: (err as Error).message });
+      } finally {
+          setIsSubmitting(false);
+      }
+  };
+
   const exitedList = state.jobs.filter(j => j.status === JobStatus.Exited)
                                 .sort((a,b) => {
                                     const timeA = a.actualExitTime ? new Date(a.actualExitTime).getTime() : 0;
@@ -292,7 +355,8 @@ const SecurityDashboard: React.FC = () => {
       JobStatus.Ready, 
       JobStatus.RepairComplete, 
       JobStatus.FreeInspection, 
-      JobStatus.Quotation
+      JobStatus.Quotation,
+      JobStatus.Rescheduled
     ].includes(j.status);
     
     if (!isReadyStatus) return false;
@@ -310,8 +374,19 @@ const SecurityDashboard: React.FC = () => {
 
   const getStatusBadge = (status: JobStatus) => {
     switch(status) {
-        case JobStatus.Arrived: return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase tracking-wide">Mới vào xưởng</span>;
-        case JobStatus.Pending: return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wide">Chờ sửa chữa</span>;
+        case JobStatus.Arrived: 
+            return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase tracking-wide">Mới vào xưởng</span>;
+        case JobStatus.Pending: 
+            return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wide">Chờ sửa chữa</span>;
+        case JobStatus.Ready:
+        case JobStatus.RepairComplete:
+            return <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase tracking-wide">Sửa xong</span>;
+        case JobStatus.FreeInspection:
+            return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold uppercase tracking-wide">KT miễn phí</span>;
+        case JobStatus.Quotation:
+            return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wide">Báo giá</span>;
+        case JobStatus.Rescheduled:
+            return <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold uppercase tracking-wide">Hẹn lại</span>;
         default: return null;
     }
   };
@@ -365,38 +440,106 @@ const SecurityDashboard: React.FC = () => {
         </div>
 
         <div className="px-4 pb-4">
-            <h2 className="text-[11px] font-extrabold text-gray-400 uppercase mb-3 px-1 tracking-wider flex justify-between">
-                <span>{activeTab === 'entry' ? `CHỜ TIẾP NHẬN (${uniqueArrivedJobs.length})` : `LỊCH SỬ RA CỔNG (GẦN NHẤT)`}</span>
-                {activeTab === 'entry' && <span className="text-blue-500 lowercase font-normal italic">Ẩn khi bắt đầu sửa chữa</span>}
-            </h2>
-            <div className="space-y-3">
-                {(activeTab === 'entry' ? uniqueArrivedJobs : exitedList).map(job => (
-                    <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center animate-fade-in-up">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="text-lg font-bold font-mono text-gray-800 tracking-tight leading-none">{job.licensePlate}</div>
-                                {activeTab === 'entry' && getStatusBadge(job.status)}
+            {activeTab === 'entry' ? (
+                <>
+                    <h2 className="text-[11px] font-extrabold text-gray-400 uppercase mb-3 px-1 tracking-wider flex justify-between">
+                        <span>CHỜ TIẾP NHẬN ({uniqueArrivedJobs.length})</span>
+                        <span className="text-blue-500 lowercase font-normal italic">Ẩn khi bắt đầu sửa chữa</span>
+                    </h2>
+                    <div className="space-y-3">
+                        {uniqueArrivedJobs.map(job => (
+                            <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center animate-fade-in-up">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="text-lg font-bold font-mono text-gray-800 tracking-tight leading-none">{job.licensePlate}</div>
+                                        {getStatusBadge(job.status)}
+                                    </div>
+                                    <div className="text-[11px] text-gray-400 font-medium truncate uppercase tracking-tight">
+                                        {job.carModel} • {job.customerName}
+                                    </div>
+                                </div>
+                                <div className="text-right ml-4 shrink-0">
+                                    <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
+                                        VÀO: {job.actualArrivalTime ? new Date(job.actualArrivalTime).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '--:--'}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="text-[11px] text-gray-400 font-medium truncate uppercase tracking-tight">
-                                {job.carModel} • {job.customerName}
+                        ))}
+                        {uniqueArrivedJobs.length === 0 && (
+                            <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                                <p className="text-gray-400 text-sm font-medium">Không có xe đang chờ tiếp nhận</p>
                             </div>
-                        </div>
-                        <div className="text-right ml-4 shrink-0">
-                            <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
-                                {activeTab === 'entry' 
-                                    ? `VÀO: ${job.actualArrivalTime ? new Date(job.actualArrivalTime).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '--:--'}`
-                                    : `RA: ${job.actualExitTime ? new Date(job.actualExitTime).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '--:--'}`
-                                }
-                            </div>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="space-y-6">
+                    {/* Section 1: Xe đã cấp phép / Đủ điều kiện ra cổng */}
+                    <div>
+                        <h2 className="text-[11px] font-extrabold text-emerald-600 uppercase mb-3 px-1 tracking-wider flex justify-between items-center">
+                            <span>XE ĐƯỢC PHÉP RA CỔNG ({readyToExitJobs.length})</span>
+                            <span className="text-xs text-gray-400 font-normal lowercase italic">CVDV đã duyệt</span>
+                        </h2>
+                        <div className="space-y-3">
+                            {readyToExitJobs.map(job => (
+                                <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm border border-emerald-200 bg-gradient-to-r from-emerald-50/30 to-white flex justify-between items-center animate-fade-in-up">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="text-lg font-bold font-mono text-gray-800 tracking-tight leading-none">{job.licensePlate}</div>
+                                            {getStatusBadge(job.status)}
+                                        </div>
+                                        <div className="text-[11px] text-gray-500 font-medium truncate uppercase tracking-tight">
+                                            {job.carModel} • {job.customerName}
+                                        </div>
+                                    </div>
+                                    <div className="text-right ml-3 shrink-0 flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleDirectExitConfirm(job)}
+                                            disabled={isSubmitting}
+                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1 transition-all cursor-pointer"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Cho ra
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {readyToExitJobs.length === 0 && (
+                                <div className="text-center py-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                                    <p className="text-gray-400 text-xs font-medium">Chưa có xe nào được cấp phép ra cổng</p>
+                                    <p className="text-gray-400 text-[10px] mt-0.5">Xe cần CVDV tạo giấy ra cổng hoặc KTV sửa chữa xong</p>
+                                </div>
+                            )}
                         </div>
                     </div>
-                ))}
-                {(activeTab === 'entry' ? uniqueArrivedJobs : exitedList).length === 0 && (
-                    <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                        <p className="text-gray-400 text-sm font-medium">Không có dữ liệu hiển thị</p>
+
+                    {/* Section 2: Lịch sử xe đã ra cổng gần nhất */}
+                    <div>
+                        <h2 className="text-[11px] font-extrabold text-gray-400 uppercase mb-3 px-1 tracking-wider">
+                            LỊCH SỬ RA CỔNG GẦN ĐÂY ({exitedList.length})
+                        </h2>
+                        <div className="space-y-2">
+                            {exitedList.map(job => (
+                                <div key={job.id} className="bg-white/80 p-3 rounded-xl shadow-xs border border-gray-100 flex justify-between items-center text-gray-600">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-bold font-mono text-gray-700">{job.licensePlate}</div>
+                                        <div className="text-[10px] text-gray-400 truncate uppercase">
+                                            {job.carModel} • {job.customerName}
+                                        </div>
+                                    </div>
+                                    <div className="text-right ml-4 shrink-0">
+                                        <div className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block">
+                                            RA: {job.actualExitTime ? new Date(job.actualExitTime).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '--:--'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
 
         {isScannerOpen && (
@@ -438,10 +581,19 @@ const SecurityDashboard: React.FC = () => {
                     <div className="p-6">
                         {activeTab === 'exit' && readyToExitJobs.length > 0 && (
                             <div className="mb-6">
-                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Sẵn sàng giao ({readyToExitJobs.length}):</p>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Được phép ra cổng ({readyToExitJobs.length}):</p>
+                                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
                                     {readyToExitJobs.map(j => (
-                                        <button key={j.id} onClick={() => setScannedPlate(j.licensePlate)} className={`px-2 py-1 rounded font-mono text-sm border ${scannedPlate === j.licensePlate ? 'bg-blue-600 text-white' : 'bg-gray-50'}`}>{j.licensePlate}</button>
+                                        <button 
+                                            key={j.id} 
+                                            onClick={() => setScannedPlate(j.licensePlate)} 
+                                            className={`px-2.5 py-1 rounded-lg font-mono text-xs border transition-colors flex items-center gap-1.5 ${scannedPlate === j.licensePlate ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                                        >
+                                            <span className="font-bold">{j.licensePlate}</span>
+                                            <span className="text-[10px] opacity-75">
+                                                ({j.status === JobStatus.FreeInspection ? 'KT miễn phí' : j.status === JobStatus.Quotation ? 'Báo giá' : j.status === JobStatus.Rescheduled ? 'Hẹn lại' : 'Sửa xong'})
+                                            </span>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
