@@ -12,9 +12,26 @@ interface GatePassModalProps {
 }
 
 const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
-  const { state, updateJob } = useApp();
+  const { state, updateJob, addJob } = useApp();
   const { user } = useAuth();
   
+  const getTomorrowDateString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [formData, setFormData] = useState({
     licensePlate: '',
     customerName: '',
@@ -25,6 +42,10 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
     advisorName: user?.name || '',
     status: JobStatus.FreeInspection as JobStatus, // Default status
   });
+
+  const [appointmentDate, setAppointmentDate] = useState(getTomorrowDateString());
+  const [appointmentTime, setAppointmentTime] = useState('09:00');
+  const [appointmentNotes, setAppointmentNotes] = useState('Xưởng đông, khách hẹn lại');
 
   const [selectedJobId, setSelectedJobId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +104,13 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
         return;
     }
 
+    if (formData.status === JobStatus.Appointment) {
+        if (!appointmentDate || !appointmentTime) {
+            setError("Vui lòng chọn đầy đủ ngày và giờ hẹn cho xe.");
+            return;
+        }
+    }
+
     setIsSubmitting(true);
     try {
         const primaryJob = state.jobs.find(j => j.id === selectedJobId);
@@ -127,6 +155,46 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
             } catch (followupErr) {
                 // Không block luồng in giấy ra cổng nếu tạo followup thất bại
                 console.error('[GatePass] Lỗi tạo theo dõi báo giá:', followupErr);
+            }
+        }
+
+        // === Auto-create new appointment job khi chọn "Xưởng đông, hẹn lại" ===
+        if (formData.status === JobStatus.Appointment) {
+            try {
+                const [year, month, day] = appointmentDate.split('-').map(Number);
+                const [hours, minutes] = appointmentTime.split(':').map(Number);
+                const plannedStart = new Date(year, month - 1, day, hours, minutes, 0);
+                const plannedEnd = new Date(plannedStart.getTime() + 60 * 60 * 1000);
+
+                // Gán khoang chung nếu có khoang khả dụng
+                const generalBay = state.bays.find(b => b.type === 'General' && (!b.status || b.status === 'active'));
+
+                const newAppointmentJob: Job = {
+                    id: crypto.randomUUID(),
+                    licensePlate: formData.licensePlate.trim().toUpperCase(),
+                    customerName: formData.customerName,
+                    customerPhone: formData.customerPhone,
+                    carModel: formData.carModel,
+                    vin: primaryJob.vin || '',
+                    jobType: formData.jobType,
+                    advisorName: formData.advisorName,
+                    status: JobStatus.Appointment,
+                    isAppointment: true,
+                    plannedStartTime: plannedStart,
+                    plannedEndTime: plannedEnd,
+                    appointmentTime: plannedStart,
+                    appointmentCreatedAt: new Date(),
+                    bayId: generalBay?.id,
+                    technician: generalBay?.technician,
+                    useLift: false,
+                    km: typeof formData.km === 'number' ? formData.km : Number(formData.km) || 0,
+                    jsonData: JSON.stringify({ appointmentNote: appointmentNotes || 'Xưởng đông, khách hẹn lại' })
+                };
+
+                await addJob(newAppointmentJob);
+                console.log('[GatePass] Đã tạo lịch hẹn mới cho xe:', formData.licensePlate);
+            } catch (appointmentErr) {
+                console.error('[GatePass] Lỗi tạo lịch hẹn mới:', appointmentErr);
             }
         }
 
@@ -228,8 +296,18 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
                             </div>
                              <div className="flex items-baseline">
                                 <span className="w-36">Nội dung sửa chữa:</span>
-                                <span>{formData.jobType} - {formData.status}</span>
+                                <span>
+                                    {formData.status === JobStatus.Appointment 
+                                        ? `${formData.jobType} - Hẹn lại (${appointmentTime} ngày ${appointmentDate.split('-').reverse().join('/')})` 
+                                        : `${formData.jobType} - ${formData.status}`}
+                                </span>
                             </div>
+                            {formData.status === JobStatus.Appointment && appointmentNotes && (
+                                <div className="flex items-baseline text-xs text-gray-700 mt-1">
+                                    <span className="w-36">Ghi chú hẹn:</span>
+                                    <span className="italic">{appointmentNotes}</span>
+                                </div>
+                            )}
                         </div>
                         
                         {/* Right Column */}
@@ -239,9 +317,11 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
                                 <span className="font-bold">{day}/{month}/{year}</span>
                             </div>
                             <div className="flex items-center">
-                                <span className="mr-6 font-bold">Miễn phí</span>
+                                <span className="mr-6 font-bold">
+                                    {formData.status === JobStatus.Appointment ? 'Hẹn lại' : 'Miễn phí'}
+                                </span>
                                 <div className="border border-black w-6 h-6 flex items-center justify-center">
-                                    {formData.status === JobStatus.FreeInspection ? (
+                                    {formData.status === JobStatus.FreeInspection || formData.status === JobStatus.Appointment ? (
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                                     ) : ''}
                                 </div>
@@ -362,8 +442,8 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
 
                 <div className="md:col-span-2 border-t pt-4 mt-2">
                     <label className="block text-sm font-bold text-gray-800 mb-2">Trạng thái ra cổng <span className="text-red-500">*</span></label>
-                    <div className="flex gap-4">
-                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-blue-50 w-1/2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.status === JobStatus.FreeInspection ? 'bg-blue-50 border-brand-blue ring-1 ring-brand-blue' : 'hover:bg-gray-50 border-gray-200'}`}>
                             <input 
                                 type="radio" 
                                 name="status" 
@@ -372,9 +452,9 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
                                 onChange={handleChange}
                                 className="h-5 w-5 text-brand-blue"
                             />
-                            <span className="ml-2 font-medium">Kiểm tra miễn phí</span>
+                            <span className="ml-2 font-medium text-sm">Kiểm tra miễn phí</span>
                         </label>
-                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-blue-50 w-1/2">
+                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.status === JobStatus.Quotation ? 'bg-blue-50 border-brand-blue ring-1 ring-brand-blue' : 'hover:bg-gray-50 border-gray-200'}`}>
                             <input 
                                 type="radio" 
                                 name="status" 
@@ -383,9 +463,65 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
                                 onChange={handleChange}
                                 className="h-5 w-5 text-brand-blue"
                             />
-                            <span className="ml-2 font-medium">Báo giá</span>
+                            <span className="ml-2 font-medium text-sm">Báo giá</span>
+                        </label>
+                        <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.status === JobStatus.Appointment ? 'bg-blue-50 border-brand-blue ring-1 ring-brand-blue' : 'hover:bg-gray-50 border-gray-200'}`}>
+                            <input 
+                                type="radio" 
+                                name="status" 
+                                value={JobStatus.Appointment} 
+                                checked={formData.status === JobStatus.Appointment} 
+                                onChange={handleChange}
+                                className="h-5 w-5 text-brand-blue"
+                            />
+                            <span className="ml-2 font-medium text-sm">Xưởng đông, hẹn lại</span>
                         </label>
                     </div>
+
+                    {/* Khi chọn "Xưởng đông, hẹn lại" thì hiển thị chọn Ngày & Giờ hẹn */}
+                    {formData.status === JobStatus.Appointment && (
+                        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                            <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm">
+                                <svg className="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Đặt lịch hẹn khách quay lại xưởng:</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Ngày hẹn <span className="text-red-500">*</span></label>
+                                    <input 
+                                        type="date" 
+                                        min={getTodayDateString()}
+                                        value={appointmentDate}
+                                        onChange={(e) => setAppointmentDate(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-brand-blue focus:border-brand-blue"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Giờ hẹn <span className="text-red-500">*</span></label>
+                                    <input 
+                                        type="time" 
+                                        value={appointmentTime}
+                                        onChange={(e) => setAppointmentTime(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-brand-blue focus:border-brand-blue"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Ghi chú hẹn lại</label>
+                                <input 
+                                    type="text" 
+                                    value={appointmentNotes}
+                                    onChange={(e) => setAppointmentNotes(e.target.value)}
+                                    placeholder="VD: Xưởng đông xe, hẹn khách quay lại sáng mai"
+                                    className="w-full p-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-brand-blue focus:border-brand-blue"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
